@@ -31,6 +31,16 @@ PRIORITY_BY_TYPE = {
 }
 
 
+def login(base_url: str, email: str, password: str) -> str:
+    response = requests.post(
+        f"{base_url.rstrip('/')}/auth/login",
+        json={"email": email, "password": password},
+        timeout=15,
+    )
+    response.raise_for_status()
+    return response.json()["accessToken"]
+
+
 def build_payload(camera_identifier: str, alert_type: str | None = None) -> dict[str, Any]:
     selected = alert_type or random.choice(ALERT_TYPES)
     return {
@@ -47,8 +57,13 @@ def build_payload(camera_identifier: str, alert_type: str | None = None) -> dict
     }
 
 
-def send_event(base_url: str, payload: dict[str, Any]) -> dict[str, Any]:
-    response = requests.post(f"{base_url.rstrip('/')}/simulation/ingest", json=payload, timeout=15)
+def send_event(base_url: str, token: str, payload: dict[str, Any]) -> dict[str, Any]:
+    response = requests.post(
+        f"{base_url.rstrip('/')}/simulation/ingest",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=15,
+    )
     response.raise_for_status()
     return response.json()
 
@@ -62,11 +77,15 @@ def main() -> None:
     args = parser.parse_args()
 
     base_url = os.getenv("SMARTGUARD_API_URL", "http://localhost:8080/api")
+    email = os.getenv("SMARTGUARD_EMAIL", "operador@smartguard.local")
+    password = os.getenv("SMARTGUARD_PASSWORD", "admin123")
+
     print("Modo: SIMULAÇÃO — sem visão computacional real.")
+    token = login(base_url, email, password)
 
     for index in range(args.count):
         payload = build_payload(args.camera, args.type)
-        created = send_event(base_url, payload)
+        created = send_event(base_url, token, payload)
         print(f"[{index + 1}] {created.get('publicId')} -> {created.get('type')} ({created.get('status')})")
 
 

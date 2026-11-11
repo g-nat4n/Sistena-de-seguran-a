@@ -24,8 +24,10 @@ smartguard:
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
   security:
-    # Autenticação completa na Fase 4. Em desenvolvimento, APIs ficam abertas.
-    permit-all: ${SECURITY_PERMIT_ALL:true}
+    permit-all: ${SECURITY_PERMIT_ALL:false}
+  jwt:
+    secret: ${JWT_SECRET:SmartGuardAiDevSecretKey_ChangeMe_32charsMin!!}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 logging:
   level:

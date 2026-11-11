@@ -11,6 +11,7 @@ import {
   Video,
 } from 'lucide-react'
 import { useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -24,6 +25,7 @@ const navItems = [
 
 export function AppLayout() {
   const [open, setOpen] = useState(false)
+  const { user, logout } = useAuth()
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
@@ -98,9 +100,18 @@ export function AppLayout() {
             <span className="inline-flex h-2 w-2 animate-pulse-dot rounded-full bg-sg-green" />
             Sistema em operação simulada
           </div>
-          <div className="ml-auto text-right">
-            <p className="text-sm font-medium text-sg-text">Operação Demo</p>
-            <p className="text-xs text-sg-muted">Loja demonstrativa</p>
+          <div className="ml-auto flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-sm font-medium text-sg-text">{user?.name ?? 'Operação'}</p>
+              <p className="text-xs text-sg-muted">{user?.roles?.join(', ') ?? 'Demo'}</p>
+            </div>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-lg border border-sg-border px-3 py-1.5 text-xs text-sg-muted hover:text-sg-text"
+            >
+              Sair
+            </button>
           </div>
         </header>
 

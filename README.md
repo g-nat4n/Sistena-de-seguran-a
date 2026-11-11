@@ -9,14 +9,14 @@ Sistema web de monitoramento inteligente para lojas — MVP com dados e câmeras
 | Camada | Tecnologias |
 |--------|-------------|
 | Frontend | React, TypeScript, Vite, Tailwind CSS, Lucide, Recharts |
-| Backend | Java 21, Spring Boot 4, Spring Security, JPA, Flyway |
+| Backend | Java 21, Spring Boot 4, Spring Security (JWT), JPA, Flyway |
 | Banco | PostgreSQL 16 |
-| IA | Python (estrutura + contrato; simulador na Fase 3) |
+| IA | Python (simulador + stubs YOLO/OpenCV) |
 
 ## Pré-requisitos
 
 - Node.js 20+
-- Java 21+ (ambiente atual: Java 22)
+- Java 21+
 - Docker Desktop (PostgreSQL)
 - (Opcional) Python 3.11+ para o módulo `ai/`
 
@@ -29,9 +29,8 @@ docker compose up -d
 Credenciais padrão (apenas desenvolvimento local):
 
 - DB: `smartguard`
-- User: `smartguard`
-- Password: `smartguard`
-- Porta host: `55432` (mapeada para `5432` no container; evita conflito com Postgres local)
+- User / Password: `smartguard` / `smartguard`
+- Porta host: `55432`
 
 ## Backend
 
@@ -42,14 +41,15 @@ cd backend
 
 API: `http://localhost:8080`
 
-Endpoints da Fase 1:
+### Contas demo
 
-- `GET /api/health`
-- `GET /api/dashboard/summary`
-- `GET /api/cameras`
-- `GET /api/cameras/{id}`
+Senha de todos: `admin123`
 
-Variáveis: veja `backend/.env.example`.
+| E-mail | Perfil |
+|--------|--------|
+| admin@smartguard.local | ADMIN |
+| gerente@smartguard.local | MANAGER |
+| operador@smartguard.local | OPERATOR |
 
 ## Frontend
 
@@ -61,36 +61,46 @@ npm run dev
 
 App: `http://localhost:5173`
 
-Variáveis: veja `frontend/.env.example`.
+## Simulador Python
+
+```bash
+cd ai
+python -m venv .venv
+.venv\Scripts\activate
+pip install requests python-dotenv
+python src/simulation/event_generator.py --count 2 --camera CAM-ENT-01
+```
 
 ## Estrutura
 
 ```text
 frontend/   # React + Vite
 backend/    # Spring Boot API
-ai/         # Visão computacional (preparado)
+ai/         # Visão computacional (preparado) + simulador
 docker-compose.yml
 ```
 
 ## Fases
 
-1. **Fase 1:** estrutura, banco, layout, dashboard via API
-2. **Fase 2:** monitoramento, central de alertas, histórico, CRUD de câmeras
-3. **Fase 3 (atual):** simulador de eventos + ingestão Python + polling na central
-4. **Fase 4:** login/perfis, testes e documentação final
+1. Estrutura, banco, layout, dashboard
+2. Monitoramento, alertas, histórico, CRUD de câmeras
+3. Simulador de eventos + ingestão Python + polling
+4. Login JWT, perfis, configurações e documentação
 
-### Endpoints (Fases 2–3)
+## Segurança
 
-- `GET /api/alerts` (filtros: type, priority, status, cameraId, from, to, search)
-- `GET /api/alerts/{id}`
-- `PATCH /api/alerts/{id}/status`
-- `POST /api/cameras` / `PUT` / `DELETE`
-- `POST /api/simulation/events`
-- `POST /api/simulation/events/batch`
-- `POST /api/simulation/ingest` (contrato para o módulo Python)
+- JWT nas APIs protegidas
+- Senhas com BCrypt
+- Perfis: ADMIN, MANAGER, OPERATOR
+- Não versione `.env` com segredos reais
+- Defina `JWT_SECRET` próprio em produção
 
-## Observações de segurança
+## Endpoints principais
 
-- Não versione arquivos `.env` com segredos reais
-- Autenticação JWT e controle por perfil entram na Fase 4
-- No MVP, `SECURITY_PERMIT_ALL=true` deixa as APIs abertas para desenvolvimento
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- `GET /api/dashboard/summary`
+- `GET /api/alerts` / `PATCH /api/alerts/{id}/status`
+- `GET|POST|PUT|DELETE /api/cameras`
+- `POST /api/simulation/events` / `ingest` / `events/batch`
+- `GET /api/settings/store`
