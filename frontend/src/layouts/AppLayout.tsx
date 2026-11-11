@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Settings,
   Shield,
+  Sparkles,
   Video,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -17,6 +18,7 @@ const navItems = [
   { to: '/alertas', label: 'Central de Alertas', icon: Bell },
   { to: '/historico', label: 'Histórico', icon: History },
   { to: '/cameras', label: 'Câmeras', icon: Camera },
+  { to: '/simulador', label: 'Simulador', icon: Sparkles },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 

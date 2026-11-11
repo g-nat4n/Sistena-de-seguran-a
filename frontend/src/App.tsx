@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { MonitoringPage } from './pages/MonitoringPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { SimulatorPage } from './pages/SimulatorPage'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="alertas" element={<AlertsPage />} />
           <Route path="historico" element={<HistoryPage />} />
           <Route path="cameras" element={<CamerasPage />} />
+          <Route path="simulador" element={<SimulatorPage />} />
           <Route
             path="configuracoes"
             element={

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AlertDetailPanel } from '../components/alerts/AlertDetailPanel'
 import { Badge } from '../components/ui/Badge'
 import { ErrorState } from '../components/ui/ErrorState'
@@ -6,6 +6,7 @@ import { LoadingState } from '../components/ui/LoadingState'
 import { PageHeader } from '../components/ui/PageHeader'
 import { SelectField } from '../components/ui/SelectField'
 import { TextField } from '../components/ui/TextField'
+import { usePolling } from '../hooks/usePolling'
 import { fetchAlertById, fetchAlerts } from '../services/alertService'
 import { fetchCameras } from '../services/cameraService'
 import type { AlertFilters, AlertItem } from '../types/alerts'
@@ -21,14 +22,16 @@ import {
 
 export function AlertsPage() {
   const [filters, setFilters] = useState<AlertFilters>({})
+  const [appliedFilters, setAppliedFilters] = useState<AlertFilters>({})
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [cameras, setCameras] = useState<Camera[]>([])
   const [selected, setSelected] = useState<AlertItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [live, setLive] = useState(true)
 
-  async function load(nextFilters = filters) {
-    setLoading(true)
+  const load = useCallback(async (nextFilters: AlertFilters, silent = false) => {
+    if (!silent) setLoading(true)
     setError(null)
     try {
       const [alertData, cameraData] = await Promise.all([fetchAlerts(nextFilters), fetchCameras()])
@@ -37,14 +40,15 @@ export function AlertsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao carregar alertas')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    void load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    void load(appliedFilters)
+  }, [appliedFilters, load])
+
+  usePolling(() => load(appliedFilters, true), 8000, live && !selected)
 
   async function openDetails(id: number) {
     try {
@@ -65,6 +69,15 @@ export function AlertsPage() {
       <PageHeader
         title="Central de Alertas"
         description="Eventos comportamentais simulados. O sistema não identifica pessoas nem declara crimes automaticamente."
+        action={
+          <button
+            type="button"
+            onClick={() => setLive((prev) => !prev)}
+            className="rounded-lg border border-sg-border px-3 py-1.5 text-xs text-sg-muted hover:text-sg-text"
+          >
+            {live ? 'Atualização ao vivo: ON (8s)' : 'Atualização ao vivo: OFF'}
+          </button>
+        }
       />
 
       <div className="mb-4 grid gap-3 rounded-xl border border-sg-border bg-sg-card/80 p-4 md:grid-cols-3 xl:grid-cols-6">
@@ -113,7 +126,7 @@ export function AlertsPage() {
       <div className="mb-4 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => void load(filters)}
+          onClick={() => setAppliedFilters(filters)}
           className="rounded-lg bg-sg-blue px-4 py-2 text-sm font-medium text-white hover:bg-sg-blue/90"
         >
           Aplicar filtros
@@ -122,7 +135,7 @@ export function AlertsPage() {
           type="button"
           onClick={() => {
             setFilters({})
-            void load({})
+            setAppliedFilters({})
           }}
           className="rounded-lg border border-sg-border px-4 py-2 text-sm text-sg-muted hover:text-sg-text"
         >
@@ -131,7 +144,7 @@ export function AlertsPage() {
       </div>
 
       {loading ? <LoadingState /> : null}
-      {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
+      {error ? <ErrorState message={error} onRetry={() => void load(appliedFilters)} /> : null}
 
       {!loading && !error ? (
         <div className="overflow-x-auto rounded-xl border border-sg-border bg-sg-card/90">

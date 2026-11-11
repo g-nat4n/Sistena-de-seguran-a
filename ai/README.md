@@ -27,4 +27,22 @@ ai/
     integrations/   # cliente HTTP para o backend
 ```
 
-A implementação do simulador e da integração ocorre na **Fase 3**.
+## Como rodar o simulador (Fase 3)
+
+```bash
+cd ai
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+pip install -r requirements.txt
+python src/simulation/event_generator.py --count 2 --camera CAM-ENT-01
+```
+
+O script envia eventos para `POST /api/simulation/ingest` no backend.
+
+## Endpoints relacionados no backend
+
+- `POST /api/simulation/events`
+- `POST /api/simulation/events/batch`
+- `POST /api/simulation/ingest`
+
