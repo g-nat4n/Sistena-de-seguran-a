@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CameraCard } from '../components/cameras/CameraCard'
+import { DeviceCameraPanel } from '../components/cameras/DeviceCameraPanel'
 import { ErrorState } from '../components/ui/ErrorState'
 import { LoadingState } from '../components/ui/LoadingState'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -37,12 +38,17 @@ export function MonitoringPage() {
     <div>
       <PageHeader
         title="Monitoramento"
-        description="Grade de câmeras fictícias com mídia demonstrativa. Não há conexão RTSP real nesta etapa."
+        description="Grade simulada + câmera real deste dispositivo (notebook ou celular via navegador)."
         action={<Badge tone="green">{online}/{cameras.length} online</Badge>}
       />
 
+      <div className="mb-4">
+        <DeviceCameraPanel />
+      </div>
+
       <div className="mb-4 rounded-xl border border-sg-blue/25 bg-sg-blue/5 px-4 py-3 text-sm text-sg-muted">
-        Arquitetura preparada para streams RTSP/ONVIF no futuro. Agora você vê apenas simulação visual.
+        As câmeras abaixo continuam com mídia demonstrativa. RTSP/ONVIF fica para etapa futura. A câmera do
+        dispositivo acima é feed ao vivo local no browser.
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

@@ -61,6 +61,17 @@ npm run dev
 
 App: `http://localhost:5173`
 
+### Câmera do notebook / celular
+
+Na tela **Monitoramento** (e no detalhe de uma câmera) há a opção **Câmera deste dispositivo**:
+
+- Usa `getUserMedia` no navegador (webcam ou câmera do celular)
+- Permite capturar frame local e gerar alerta **simulado**
+- Não envia stream RTSP e não faz reconhecimento facial
+
+No notebook: funciona em `localhost`.  
+No celular: abra o app no browser do aparelho; em IP HTTP da rede local o browser pode bloquear a câmera (prefira HTTPS ou túnel).
+
 ## Simulador Python
 
 ```bash
