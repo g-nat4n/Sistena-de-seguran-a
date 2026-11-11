@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartguard
+      POSTGRES_USER: smartguard
+      POSTGRES_PASSWORD: smartguard
+    ports:
+      - "55432:5432"
+    volumes:
+      - smartguard_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartguard -d smartguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  smartguard_pg_data:

@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sg-bg: #0b1120;
+  --color-sg-card: #151e30;
+  --color-sg-border: #263449;
+  --color-sg-green: #22c55e;
+  --color-sg-blue: #3b82f6;
+  --color-sg-red: #ef4444;
+  --color-sg-amber: #f59e0b;
+  --color-sg-text: #f8fafc;
+  --color-sg-muted: #94a3b8;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Syne", ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-sg-text);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(59, 130, 246, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, rgba(34, 197, 94, 0.08), transparent 50%),
+    linear-gradient(180deg, #0b1120 0%, #0a0f1a 100%);
+  background-attachment: fixed;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}

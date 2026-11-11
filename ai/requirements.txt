@@ -1,0 +1,7 @@
+# Dependências previstas para o módulo de IA (Fase 3+)
+# Não instalar tudo agora se for apenas estruturar o MVP.
+opencv-python>=4.8.0
+ultralytics>=8.0.0
+numpy>=1.26.0
+requests>=2.31.0
+python-dotenv>=1.0.0
