@@ -74,10 +74,19 @@ docker-compose.yml
 
 ## Fases
 
-1. **Fase 1 (atual):** estrutura, banco, layout, dashboard via API
-2. **Fase 2:** alertas, histórico, câmeras, CRUD
+1. **Fase 1:** estrutura, banco, layout, dashboard via API
+2. **Fase 2 (atual):** monitoramento, central de alertas, histórico, CRUD de câmeras
 3. **Fase 3:** simulador de eventos + integração + quase tempo real
 4. **Fase 4:** login/perfis, testes e documentação final
+
+### Endpoints adicionais (Fase 2)
+
+- `GET /api/alerts` (filtros: type, priority, status, cameraId, from, to, search)
+- `GET /api/alerts/{id}`
+- `PATCH /api/alerts/{id}/status`
+- `POST /api/cameras`
+- `PUT /api/cameras/{id}`
+- `DELETE /api/cameras/{id}`
 
 ## Observações de segurança
 

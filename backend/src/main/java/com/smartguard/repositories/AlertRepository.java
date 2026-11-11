@@ -6,10 +6,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface AlertRepository extends JpaRepository<Alert, Long> {
+public interface AlertRepository extends JpaRepository<Alert, Long>, JpaSpecificationExecutor<Alert> {
 
     Optional<Alert> findByPublicId(String publicId);
 
@@ -18,6 +19,13 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     long countByStatus(AlertStatus status);
 
     List<Alert> findTop10ByOrderByOccurredAtDesc();
+
+    @Query("""
+            SELECT a FROM Alert a
+            JOIN FETCH a.camera
+            WHERE a.id = :id
+            """)
+    Optional<Alert> findDetailedById(@Param("id") Long id);
 
     @Query(value = """
             SELECT TO_CHAR(date_trunc('hour', occurred_at), 'HH24:00') AS hour_label,

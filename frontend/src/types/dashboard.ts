@@ -35,16 +35,3 @@ export interface DashboardSummary {
   alertsByType: AlertTypeCount[]
   recentAlerts: RecentAlertItem[]
 }
-
-export interface Camera {
-  id: number
-  name: string
-  identifier: string
-  location: string
-  type: string
-  description: string
-  status: string
-  demoMediaUrl: string
-  rtspConfigured: boolean
-  updatedAt: string
-}
