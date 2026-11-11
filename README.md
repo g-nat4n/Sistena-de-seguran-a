@@ -61,13 +61,16 @@ npm run dev
 
 App: `http://localhost:5173`
 
-### Câmera do notebook / celular
+### Câmera do notebook / celular + detecção de movimento
 
 Na tela **Monitoramento** (e no detalhe de uma câmera) há a opção **Câmera deste dispositivo**:
 
 - Usa `getUserMedia` no navegador (webcam ou câmera do celular)
-- Permite capturar frame local e gerar alerta **simulado**
-- Não envia stream RTSP e não faz reconhecimento facial
+- **Detecção automática de movimento** (diferença de frames no browser)
+- Pode gerar alerta de “movimentação suspeita” sem identificar quem é a pessoa
+- Também há protótipo OpenCV em `ai/src/detection/webcam_motion_watch.py`
+
+Não faz reconhecimento facial. Não declara crime automaticamente.
 
 No notebook: funciona em `localhost`.  
 No celular: abra o app no browser do aparelho; em IP HTTP da rede local o browser pode bloquear a câmera (prefira HTTPS ou túnel).
