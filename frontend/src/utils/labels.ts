@@ -36,6 +36,18 @@ export function cameraTypeLabel(type: string): string {
   return map[type] ?? type
 }
 
+export function streamStateLabel(state: string): string {
+  const map: Record<string, string> = {
+    IDLE: 'Ocioso',
+    CONNECTING: 'Conectando',
+    CONNECTED: 'Conectado',
+    RECONNECTING: 'Reconectando',
+    ERROR: 'Erro',
+    STOPPED: 'Parado',
+  }
+  return map[state] ?? state
+}
+
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'short',

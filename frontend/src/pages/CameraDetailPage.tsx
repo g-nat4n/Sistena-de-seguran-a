@@ -2,13 +2,14 @@ import { ArrowLeft, MapPin } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DeviceCameraPanel } from '../components/cameras/DeviceCameraPanel'
+import { RtspConfigPanel } from '../components/cameras/RtspConfigPanel'
 import { Badge } from '../components/ui/Badge'
 import { ErrorState } from '../components/ui/ErrorState'
 import { LoadingState } from '../components/ui/LoadingState'
 import { PageHeader } from '../components/ui/PageHeader'
 import { fetchCameraById } from '../services/cameraService'
 import type { Camera } from '../types/camera'
-import { cameraTypeLabel, formatDateTime, statusLabel } from '../utils/labels'
+import { cameraTypeLabel, formatDateTime, statusLabel, streamStateLabel } from '../utils/labels'
 
 export function CameraDetailPage() {
   const { id } = useParams()
@@ -48,6 +49,9 @@ export function CameraDetailPage() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={camera.status === 'ONLINE' ? 'green' : 'red'}>{statusLabel(camera.status)}</Badge>
+            <Badge tone={camera.streamState === 'CONNECTED' ? 'green' : 'neutral'}>
+              Stream: {streamStateLabel(camera.streamState ?? 'IDLE')}
+            </Badge>
             <button
               type="button"
               onClick={() => setUseDevice((prev) => !prev)}
@@ -58,6 +62,10 @@ export function CameraDetailPage() {
           </div>
         }
       />
+
+      <div className="mb-4">
+        <RtspConfigPanel camera={camera} onUpdated={setCamera} />
+      </div>
 
       {useDevice ? (
         <DeviceCameraPanel linkedCameraId={camera.id} linkedCameraName={camera.name} />
@@ -71,10 +79,11 @@ export function CameraDetailPage() {
                 className="aspect-video w-full object-cover"
               />
             ) : (
-              <div className="flex aspect-video items-center justify-center text-sg-muted">Sem mídia</div>
+              <div className="flex aspect-video items-center justify-center text-sg-muted">Sem mídia demo</div>
             )}
             <div className="border-t border-sg-border px-4 py-3 text-xs text-sg-muted">
-              Fonte demonstrativa · stream RTSP não conectado · atualizado em {formatDateTime(camera.updatedAt)}
+              Preview RTSP ao vivo entra na próxima fase. Agora: status de conexão + mídia demonstrativa ·{' '}
+              {formatDateTime(camera.updatedAt)}
             </div>
           </div>
 
@@ -82,9 +91,11 @@ export function CameraDetailPage() {
             <Info label="Identificação" value={camera.identifier} />
             <Info label="Localização" value={camera.location} icon />
             <Info label="Tipo" value={cameraTypeLabel(camera.type)} />
-            <Info label="RTSP configurado" value={camera.rtspConfigured ? 'Sim' : 'Não (MVP)'} />
+            <Info label="RTSP configurado" value={camera.rtspConfigured ? 'Sim' : 'Não'} />
+            <Info label="Host" value={camera.rtspHost ?? '—'} />
             <p className="rounded-lg border border-dashed border-sg-border p-3 text-xs text-sg-muted">
-              Use o botão “Usar câmera deste dispositivo” para abrir o feed ao vivo do notebook/celular neste slot.
+              Configure o RTSP Intelbras acima, teste a conexão e inicie o stream. O modo simulado e a câmera do
+              dispositivo continuam disponíveis.
             </p>
           </aside>
         </div>

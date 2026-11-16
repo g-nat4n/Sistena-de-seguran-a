@@ -2,12 +2,19 @@ import { MapPin, Radio } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Camera } from '../../types/camera'
 import { Badge } from '../ui/Badge'
-import { cameraTypeLabel, statusLabel } from '../../utils/labels'
+import { cameraTypeLabel, statusLabel, streamStateLabel } from '../../utils/labels'
 
 function statusTone(status: string) {
   if (status === 'ONLINE') return 'green' as const
   if (status === 'MAINTENANCE') return 'amber' as const
   return 'red' as const
+}
+
+function streamTone(state?: string | null) {
+  if (state === 'CONNECTED') return 'green' as const
+  if (state === 'ERROR') return 'red' as const
+  if (state === 'CONNECTING' || state === 'RECONNECTING') return 'amber' as const
+  return 'neutral' as const
 }
 
 export function CameraCard({ camera }: { camera: Camera }) {
@@ -23,12 +30,15 @@ export function CameraCard({ camera }: { camera: Camera }) {
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-sg-muted">Sem mídia demo</div>
         )}
-        <div className="absolute left-3 top-3">
+        <div className="absolute left-3 top-3 flex flex-col gap-1">
           <Badge tone={statusTone(camera.status)}>
             <span className="mr-1 inline-flex">
               <Radio size={11} />
             </span>
             {statusLabel(camera.status)}
+          </Badge>
+          <Badge tone={streamTone(camera.streamState)}>
+            {streamStateLabel(camera.streamState ?? 'IDLE')}
           </Badge>
         </div>
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
@@ -41,7 +51,10 @@ export function CameraCard({ camera }: { camera: Camera }) {
       <div className="flex items-center justify-between gap-3 p-3">
         <div className="text-xs text-sg-muted">
           <p>{camera.identifier}</p>
-          <p>{cameraTypeLabel(camera.type)} · demo (não é stream RTSP)</p>
+          <p>
+            {cameraTypeLabel(camera.type)} ·{' '}
+            {camera.rtspConfigured ? 'RTSP configurado' : 'demo / sem RTSP'}
+          </p>
         </div>
         <Link
           to={`/monitoramento/${camera.id}`}

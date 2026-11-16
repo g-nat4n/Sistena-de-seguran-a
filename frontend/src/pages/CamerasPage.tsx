@@ -106,7 +106,7 @@ export function CamerasPage() {
     <div>
       <PageHeader
         title="Gerenciamento de Câmeras"
-        description="Cadastro manual sem exigir endereço RTSP. Ideal para o MVP com câmeras fictícias."
+        description="Cadastre a câmera e, no detalhe (Monitoramento → Abrir), configure o RTSP Intelbras com usuário/senha."
       />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">

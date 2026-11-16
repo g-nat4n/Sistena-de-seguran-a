@@ -1,0 +1,1 @@
+"""SmartGuard Vision Service (FastAPI)."""

@@ -47,8 +47,8 @@ export function MonitoringPage() {
       </div>
 
       <div className="mb-4 rounded-xl border border-sg-blue/25 bg-sg-blue/5 px-4 py-3 text-sm text-sg-muted">
-        As câmeras abaixo continuam com mídia demonstrativa. RTSP/ONVIF fica para etapa futura. A câmera do
-        dispositivo acima é feed ao vivo local no browser.
+        Abra uma câmera para configurar RTSP Intelbras (teste/iniciar/parar). O modo demo e a câmera do dispositivo
+        continuam disponíveis. Preview RTSP ao vivo no painel entra na próxima fase.
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

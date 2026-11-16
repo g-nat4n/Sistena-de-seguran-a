@@ -2,30 +2,46 @@
 
 Este módulo é **independente** do backend Java e do frontend React.
 
-## Escopo atual (MVP)
+## Escopo atual
 
-- Estrutura preparada para detecção com YOLO + OpenCV + ByteTrack
-- Simulador de eventos comportamentais (sem câmeras físicas)
-- Interface de integração para enviar resultados ao backend
+- **Fase A:** serviço FastAPI para testar/iniciar/parar RTSP Intelbras
+- Simulador de eventos comportamentais
+- Protótipo de movimento (webcam local)
+- Estrutura preparada para YOLO + ByteTrack (próxima fase)
 
 ## O que este módulo NÃO faz
 
 - Não realiza reconhecimento facial
 - Não identifica pessoas por biometria
 - Não declara automaticamente que alguém cometeu um crime
-- Não conecta a streams RTSP reais nesta etapa
+- Ainda não faz preview HLS/WebRTC no painel (só status de conexão na Fase A)
 
 ## Estrutura
 
 ```text
 ai/
+  app/                 # FastAPI (Vision Service)
+    main.py
+    rtsp/              # probe + stream manager
   src/
-    detection/      # stubs YOLO / tracking
-    simulation/     # gerador de eventos fictícios
-    services/       # orquestração
-    models/         # contratos de dados
-    integrations/   # cliente HTTP para o backend
+    detection/         # motion / stubs YOLO
+    simulation/        # gerador de eventos fictícios
+    integrations/      # cliente HTTP
 ```
+
+## Vision Service (RTSP)
+
+```bash
+cd ai
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 127.0.0.1 --port 8090
+```
+
+Health: `http://127.0.0.1:8090/health`
+
+Guia Intelbras: `docs/INTELBRAS_RTSP.md`
 
 ## Como rodar o simulador (Fase 3)
 

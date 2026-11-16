@@ -28,6 +28,12 @@ smartguard:
   jwt:
     secret: ${JWT_SECRET:SmartGuardAiDevSecretKey_ChangeMe_32charsMin!!}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  crypto:
+    # Chave local de desenvolvimento — troque em produção.
+    secret: ${CRYPTO_SECRET:SmartGuardCryptoDevKey_ChangeInProd_32b}
+  vision:
+    base-url: ${VISION_BASE_URL:http://127.0.0.1:8090}
+    service-token: ${VISION_SERVICE_TOKEN:smartguard-vision-dev-token}
 
 logging:
   level:

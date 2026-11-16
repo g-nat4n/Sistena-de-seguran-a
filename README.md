@@ -75,13 +75,23 @@ Não faz reconhecimento facial. Não declara crime automaticamente.
 No notebook: funciona em `localhost`.  
 No celular: abra o app no browser do aparelho; em IP HTTP da rede local o browser pode bloquear a câmera (prefira HTTPS ou túnel).
 
-## Simulador Python
+## Vision Service (RTSP Intelbras)
 
 ```bash
 cd ai
 python -m venv .venv
 .venv\Scripts\activate
-pip install requests python-dotenv
+pip install -r requirements.txt
+uvicorn app.main:app --host 127.0.0.1 --port 8090
+```
+
+Guia completo: [`docs/INTELBRAS_RTSP.md`](docs/INTELBRAS_RTSP.md)
+
+## Simulador Python
+
+```bash
+cd ai
+.venv\Scripts\activate
 python src/simulation/event_generator.py --count 2 --camera CAM-ENT-01
 ```
 

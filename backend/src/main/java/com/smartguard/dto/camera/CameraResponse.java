@@ -12,6 +12,14 @@ public record CameraResponse(
         String status,
         String demoMediaUrl,
         boolean rtspConfigured,
+        String rtspHost,
+        Integer rtspPort,
+        String rtspPath,
+        String rtspUsername,
+        String streamState,
+        Instant lastSeenAt,
+        Instant lastTestedAt,
+        String lastError,
         Instant updatedAt
 ) {
 }

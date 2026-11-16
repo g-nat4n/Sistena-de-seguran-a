@@ -54,10 +54,11 @@ public class SecurityConfig {
                         return;
                     }
                     auth.requestMatchers("/api/health", "/api/auth/login").permitAll()
+                            .requestMatchers("/api/internal/**").permitAll()
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                             .requestMatchers("/api/simulation/**").hasAnyRole("ADMIN", "MANAGER", "OPERATOR")
                             .requestMatchers(HttpMethod.DELETE, "/api/cameras/**").hasAnyRole("ADMIN", "MANAGER")
-                            .requestMatchers(HttpMethod.POST, "/api/cameras/**").hasAnyRole("ADMIN", "MANAGER")
+                            .requestMatchers(HttpMethod.POST, "/api/cameras").hasAnyRole("ADMIN", "MANAGER")
                             .requestMatchers(HttpMethod.PUT, "/api/cameras/**").hasAnyRole("ADMIN", "MANAGER")
                             .anyRequest().authenticated();
                 })

@@ -4,6 +4,7 @@ import com.smartguard.dto.camera.CameraRequest;
 import com.smartguard.dto.camera.CameraResponse;
 import com.smartguard.entities.Camera;
 import com.smartguard.entities.Store;
+import com.smartguard.entities.enums.StreamState;
 import com.smartguard.exceptions.BusinessException;
 import com.smartguard.exceptions.ResourceNotFoundException;
 import com.smartguard.repositories.CameraRepository;
@@ -49,6 +50,7 @@ public class CameraService {
                 .description(normalize(request.description()))
                 .status(request.status())
                 .demoMediaUrl(normalize(request.demoMediaUrl()))
+                .streamState(StreamState.IDLE)
                 .store(store)
                 .build();
 
@@ -89,7 +91,7 @@ public class CameraService {
         }
     }
 
-    private Camera findCamera(Long id) {
+    Camera findCamera(Long id) {
         return cameraRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Câmera não encontrada: " + id));
     }
@@ -98,7 +100,8 @@ public class CameraService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private CameraResponse toResponse(Camera camera) {
+    CameraResponse toResponse(Camera camera) {
+        StreamState streamState = camera.getStreamState() == null ? StreamState.IDLE : camera.getStreamState();
         return new CameraResponse(
                 camera.getId(),
                 camera.getName(),
@@ -108,7 +111,15 @@ public class CameraService {
                 camera.getDescription(),
                 camera.getStatus().name(),
                 camera.getDemoMediaUrl(),
-                camera.getRtspUrl() != null && !camera.getRtspUrl().isBlank(),
+                camera.hasRtspCredentials(),
+                camera.getRtspHost(),
+                camera.getRtspPort(),
+                camera.getRtspPath(),
+                camera.getRtspUsername(),
+                streamState.name(),
+                camera.getLastSeenAt(),
+                camera.getLastTestedAt(),
+                camera.getLastError(),
                 camera.getUpdatedAt()
         );
     }
