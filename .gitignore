@@ -31,6 +31,12 @@ Thumbs.db
 *.log
 logs/
 
+# Vision / ML artifacts
+ai/data/evidence/*
+!ai/data/evidence/.gitkeep
+*.pt
+runs/
+
 # OS / misc
 *.tmp
 *.swp

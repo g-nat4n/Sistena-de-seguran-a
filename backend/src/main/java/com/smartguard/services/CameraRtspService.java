@@ -67,7 +67,7 @@ public class CameraRtspService {
         camera.setLastTestedAt(Instant.now());
 
         String rtspUrl = buildAuthenticatedRtspUrl(camera);
-        var result = visionServiceClient.testRtsp(cameraId, rtspUrl);
+        var result = visionServiceClient.testRtsp(cameraId, camera.getIdentifier(), rtspUrl);
 
         camera.setLastTestedAt(Instant.now());
         if (result.success()) {
@@ -89,7 +89,7 @@ public class CameraRtspService {
         camera.setLastError(null);
 
         String rtspUrl = buildAuthenticatedRtspUrl(camera);
-        var result = visionServiceClient.startStream(cameraId, rtspUrl);
+        var result = visionServiceClient.startStream(cameraId, camera.getIdentifier(), rtspUrl);
 
         if (result.success()) {
             camera.setStreamState(StreamState.CONNECTED);

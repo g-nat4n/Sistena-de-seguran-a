@@ -49,9 +49,9 @@ public class SimulationController {
     @GetMapping("/info")
     public Map<String, Object> info() {
         return Map.of(
-                "mode", "simulated",
+                "mode", "hybrid",
                 "facialRecognition", false,
-                "disclaimer", "Eventos gerados aqui são simulados e não representam detecções reais."
+                "disclaimer", "Eventos do simulador são fictícios. Eventos do Vision/RTSP são comportamentais anônimos para revisão humana."
         );
     }
 }

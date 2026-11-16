@@ -1,15 +1,9 @@
-"""Stub de detecção YOLO/ByteTrack.
-
-Para movimento anônimo no curto prazo, use:
-- frontend: detecção por diferença de frames
-- python: src/detection/webcam_motion_watch.py (OpenCV)
-"""
+"""Compatibilidade: a detecção YOLO ativa está em ai/app/detection/person_detector.py."""
 
 
 class YoloDetectionService:
     def analyze_frame(self, frame_path: str) -> dict:
         raise NotImplementedError(
-            "YOLO/ByteTrack ainda não está ativo. "
-            "Use motion_detector/webcam_motion_watch para o protótipo de movimento, "
-            "ou o simulador em ai/src/simulation/event_generator.py."
+            "Use o Vision Service (ai/app) com stream RTSP iniciado. "
+            "Detector ativo: app.detection.person_detector.PersonDetector."
         )

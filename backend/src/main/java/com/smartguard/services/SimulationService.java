@@ -112,7 +112,9 @@ public class SimulationService {
                 .alert(saved)
                 .mediaUrl(evidenceUrl == null ? "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800" : evidenceUrl)
                 .mediaType("image")
-                .caption("Evidência ilustrativa (" + (simulated ? "simulada" : "integrada") + ") — "
+                .caption((simulated
+                        ? "Evidência ilustrativa (simulada) — "
+                        : "Snapshot anônimo do Vision/RTSP — ")
                         + alertLabelMapper.toLabel(type))
                 .build());
 

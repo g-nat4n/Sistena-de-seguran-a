@@ -1,4 +1,4 @@
-"""Gerenciador de streams RTSP (1+ câmeras) com reconexão e heartbeat."""
+"""Gerenciador de streams RTSP com reconexão, heartbeat e detecção (Fase B)."""
 
 from __future__ import annotations
 
@@ -13,11 +13,18 @@ import requests
 
 from app.config import (
     BACKEND_BASE_URL,
+    DETECTION_ENABLED,
+    DETECTION_EVERY_N_FRAMES,
     HEARTBEAT_SECONDS,
     OPEN_TIMEOUT_SECONDS,
     RECONNECT_DELAY_SECONDS,
     SERVICE_TOKEN,
+    YOLO_CONFIDENCE,
+    YOLO_MODEL,
 )
+from app.detection.centroid_tracker import CentroidTracker
+from app.detection.event_engine import EventEngine
+from app.detection.person_detector import PersonDetector
 from app.rtsp.connection import mask_rtsp_url, probe_rtsp
 
 logger = logging.getLogger("smartguard.rtsp")
@@ -26,6 +33,7 @@ logger = logging.getLogger("smartguard.rtsp")
 @dataclass
 class StreamHandle:
     camera_id: int
+    camera_identifier: str
     rtsp_url: str
     stop_event: threading.Event = field(default_factory=threading.Event)
     thread: threading.Thread | None = None
@@ -35,19 +43,35 @@ class StreamManager:
     def __init__(self) -> None:
         self._streams: Dict[int, StreamHandle] = {}
         self._lock = threading.Lock()
+        self._detector: PersonDetector | None = None
+        self._event_engine = EventEngine()
 
-    def test(self, camera_id: int, rtsp_url: str) -> dict:
-        logger.info("Testando RTSP camera_id=%s url=%s", camera_id, mask_rtsp_url(rtsp_url))
+    def _get_detector(self) -> PersonDetector:
+        if self._detector is None:
+            self._detector = PersonDetector(confidence=YOLO_CONFIDENCE, model_name=YOLO_MODEL)
+        return self._detector
+
+    def test(self, camera_id: int, rtsp_url: str, camera_identifier: str = "") -> dict:
+        logger.info(
+            "Testando RTSP camera_id=%s identifier=%s url=%s",
+            camera_id,
+            camera_identifier or "-",
+            mask_rtsp_url(rtsp_url),
+        )
         result = probe_rtsp(rtsp_url, OPEN_TIMEOUT_SECONDS)
         return {"success": result.success, "message": result.message}
 
-    def start(self, camera_id: int, rtsp_url: str) -> dict:
+    def start(self, camera_id: int, rtsp_url: str, camera_identifier: str) -> dict:
         with self._lock:
             existing = self._streams.get(camera_id)
             if existing and existing.thread and existing.thread.is_alive():
                 return {"success": True, "message": "Stream já estava em execução"}
 
-            handle = StreamHandle(camera_id=camera_id, rtsp_url=rtsp_url)
+            handle = StreamHandle(
+                camera_id=camera_id,
+                camera_identifier=camera_identifier,
+                rtsp_url=rtsp_url,
+            )
             thread = threading.Thread(
                 target=self._run_loop,
                 args=(handle,),
@@ -58,8 +82,14 @@ class StreamManager:
             self._streams[camera_id] = handle
             thread.start()
 
-        logger.info("Stream iniciado camera_id=%s url=%s", camera_id, mask_rtsp_url(rtsp_url))
-        return {"success": True, "message": "Stream iniciado"}
+        logger.info(
+            "Stream iniciado camera_id=%s identifier=%s url=%s detection=%s",
+            camera_id,
+            camera_identifier,
+            mask_rtsp_url(rtsp_url),
+            DETECTION_ENABLED,
+        )
+        return {"success": True, "message": "Stream iniciado com detecção" if DETECTION_ENABLED else "Stream iniciado"}
 
     def stop(self, camera_id: int) -> dict:
         with self._lock:
@@ -79,6 +109,8 @@ class StreamManager:
     def _run_loop(self, handle: StreamHandle) -> None:
         camera_id = handle.camera_id
         consecutive_failures = 0
+        tracker = CentroidTracker()
+        frame_index = 0
 
         while not handle.stop_event.is_set():
             capture = None
@@ -103,7 +135,18 @@ class StreamManager:
                         self._heartbeat(camera_id, "CONNECTED", None)
                         last_heartbeat = now
 
-                    # Fase A: apenas mantém a conexão viva.
+                    frame_index += 1
+                    if DETECTION_ENABLED and frame_index % DETECTION_EVERY_N_FRAMES == 0:
+                        detections = self._get_detector().detect(frame)
+                        tracks = tracker.update(detections)
+                        if tracks:
+                            self._event_engine.evaluate(
+                                camera_id=handle.camera_id,
+                                camera_identifier=handle.camera_identifier,
+                                frame=frame,
+                                tracks=tracks,
+                            )
+
                     time.sleep(0.01)
 
             except Exception as exc:  # noqa: BLE001

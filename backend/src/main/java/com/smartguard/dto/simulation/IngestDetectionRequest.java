@@ -7,8 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * Contrato de ingestão para o módulo Python (simulador agora; YOLO/OpenCV no futuro).
- * Sempre trata o evento como comportamental — nunca como identificação biométrica.
+ * Contrato de ingestão do Vision Service (YOLO/RTSP) e do simulador Python.
+ * Sempre comportamental e anônimo — nunca identificação biométrica.
  */
 public record IngestDetectionRequest(
         @NotBlank @Size(max = 60) String cameraIdentifier,
@@ -17,6 +17,6 @@ public record IngestDetectionRequest(
         @NotBlank @Size(max = 500) String description,
         Double confidence,
         boolean simulated,
-        @Size(max = 500) String evidenceUrl
+        @Size(max = 1000) String evidenceUrl
 ) {
 }

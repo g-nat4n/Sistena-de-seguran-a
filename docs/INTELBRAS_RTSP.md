@@ -90,9 +90,32 @@ CRYPTO_SECRET=SmartGuardCryptoDevKey_ChangeInProd_32b
 Abra o VLC → Mídia → Abrir localização de rede e cole a URL RTSP completa.  
 Se o VLC não abrir, o SmartGuard também não conseguirá.
 
+## Fase B — Detecção anônima
+
+Com o stream **iniciado**, o Vision Service:
+
+1. Lê frames do RTSP
+2. Detecta pessoas com YOLO (`yolov8n`) — fallback HOG se YOLO não carregar
+3. Faz tracking anônimo por centróide
+4. Gera alertas de `SUSPICIOUS_MOVEMENT` / `UNUSUAL_DWELL`
+5. Salva snapshot em `ai/data/evidence` e envia ao backend (`simulated=false`)
+
+**Não** há reconhecimento facial nem identificação de identidade.
+
+Variáveis úteis:
+
+```env
+DETECTION_ENABLED=true
+DETECTION_EVERY_N_FRAMES=5
+YOLO_CONFIDENCE=0.45
+DWELL_SECONDS=20
+ALERT_COOLDOWN_SECONDS=45
+```
+
 ## Segurança
 
 - Não versione senhas reais
 - Troque `CRYPTO_SECRET` e `VISION_SERVICE_TOKEN` em produção
 - Prefira usuário RTSP dedicado (não o admin global, se possível)
 - Não compartilhe prints com URL completa contendo senha
+

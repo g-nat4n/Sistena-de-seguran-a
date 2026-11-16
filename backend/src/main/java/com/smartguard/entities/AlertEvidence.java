@@ -34,7 +34,7 @@ public class AlertEvidence {
     @JoinColumn(name = "alert_id", nullable = false)
     private Alert alert;
 
-    @Column(nullable = false, length = 500)
+    @Column(nullable = false, length = 1000)
     private String mediaUrl;
 
     @Column(length = 30)

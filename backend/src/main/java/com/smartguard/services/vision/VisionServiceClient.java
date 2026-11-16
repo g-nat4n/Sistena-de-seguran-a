@@ -1,5 +1,6 @@
 package com.smartguard.services.vision;
 
+import java.util.HashMap;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -23,24 +24,26 @@ public class VisionServiceClient {
                 .build();
     }
 
-    public VisionOperationResult testRtsp(Long cameraId, String rtspUrl) {
-        return post("/streams/test", Map.of(
-                "cameraId", cameraId,
-                "rtspUrl", rtspUrl
-        ));
+    public VisionOperationResult testRtsp(Long cameraId, String cameraIdentifier, String rtspUrl) {
+        return post("/streams/test", body(cameraId, cameraIdentifier, rtspUrl));
     }
 
-    public VisionOperationResult startStream(Long cameraId, String rtspUrl) {
-        return post("/streams/start", Map.of(
-                "cameraId", cameraId,
-                "rtspUrl", rtspUrl
-        ));
+    public VisionOperationResult startStream(Long cameraId, String cameraIdentifier, String rtspUrl) {
+        return post("/streams/start", body(cameraId, cameraIdentifier, rtspUrl));
     }
 
     public VisionOperationResult stopStream(Long cameraId) {
-        return post("/streams/stop", Map.of(
-                "cameraId", cameraId
-        ));
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("cameraId", cameraId);
+        return post("/streams/stop", payload);
+    }
+
+    private Map<String, Object> body(Long cameraId, String cameraIdentifier, String rtspUrl) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("cameraId", cameraId);
+        payload.put("cameraIdentifier", cameraIdentifier);
+        payload.put("rtspUrl", rtspUrl);
+        return payload;
     }
 
     private VisionOperationResult post(String path, Map<String, Object> body) {
@@ -68,7 +71,6 @@ public class VisionServiceClient {
         if (message == null) {
             return "erro desconhecido";
         }
-        // Evita vazar URL completa com credenciais em mensagens de erro.
         return message.replaceAll("rtsp://[^\\s]+", "rtsp://***");
     }
 

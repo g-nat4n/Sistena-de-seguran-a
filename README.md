@@ -1,6 +1,6 @@
 # SmartGuard AI
 
-Sistema web de monitoramento inteligente para lojas — MVP com dados e câmeras **simulados**, preparado para futura integração com câmeras IP (RTSP/ONVIF) e visão computacional (YOLO/OpenCV).
+Sistema web de monitoramento inteligente para lojas — MVP com simulador, câmera do dispositivo, RTSP Intelbras e detecção anônima de pessoas (YOLO).
 
 > O sistema analisa **eventos e comportamentos**. Não há reconhecimento facial nem declaração automática de crime.
 
@@ -11,7 +11,7 @@ Sistema web de monitoramento inteligente para lojas — MVP com dados e câmeras
 | Frontend | React, TypeScript, Vite, Tailwind CSS, Lucide, Recharts |
 | Backend | Java 21, Spring Boot 4, Spring Security (JWT), JPA, Flyway |
 | Banco | PostgreSQL 16 |
-| IA | Python (simulador + stubs YOLO/OpenCV) |
+| IA | Python FastAPI (RTSP + YOLO/HOG + tracking + simulador) |
 
 ## Pré-requisitos
 
@@ -87,6 +87,8 @@ uvicorn app.main:app --host 127.0.0.1 --port 8090
 
 Guia completo: [`docs/INTELBRAS_RTSP.md`](docs/INTELBRAS_RTSP.md)
 
+Com o stream iniciado, o Vision Service detecta pessoas de forma **anônima** (YOLO) e envia alertas para a central (`simulated=false`), sem reconhecimento facial.
+
 ## Simulador Python
 
 ```bash
@@ -100,7 +102,7 @@ python src/simulation/event_generator.py --count 2 --camera CAM-ENT-01
 ```text
 frontend/   # React + Vite
 backend/    # Spring Boot API
-ai/         # Visão computacional (preparado) + simulador
+ai/         # Vision Service (RTSP/YOLO) + simulador
 docker-compose.yml
 ```
 
@@ -110,6 +112,8 @@ docker-compose.yml
 2. Monitoramento, alertas, histórico, CRUD de câmeras
 3. Simulador de eventos + ingestão Python + polling
 4. Login JWT, perfis, configurações e documentação
+5. **Fase A** — RTSP Intelbras (credenciais AES-GCM, test/start/stop, heartbeat)
+6. **Fase B** — YOLO anônimo + tracking + snapshots + ingestão real (`simulated=false`)
 
 ## Segurança
 
