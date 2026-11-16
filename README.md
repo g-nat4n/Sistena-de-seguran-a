@@ -114,6 +114,14 @@ docker-compose.yml
 4. Login JWT, perfis, configurações e documentação
 5. **Fase A** — RTSP Intelbras (credenciais AES-GCM, test/start/stop, heartbeat)
 6. **Fase B** — YOLO anônimo + tracking + snapshots + ingestão real (`simulated=false`)
+7. **Fase C** — YOLO-Pose: loitering (muito tempo parado) + suspeita de ocultação (revisão humana)
+
+## Deploy (Vercel + Render)
+
+Guia: [`docs/DEPLOY.md`](docs/DEPLOY.md)
+
+- Frontend → Vercel  
+- API + Postgres + Vision → Render (`render.yaml`) ou VPS (`docker-compose.prod.yml`)
 
 ## Segurança
 

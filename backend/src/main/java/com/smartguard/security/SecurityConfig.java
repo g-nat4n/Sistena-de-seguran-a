@@ -55,7 +55,9 @@ public class SecurityConfig {
                     }
                     auth.requestMatchers("/api/health", "/api/auth/login").permitAll()
                             .requestMatchers("/api/internal/**").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/evidence/files/**").permitAll()
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                            .requestMatchers(HttpMethod.POST, "/api/evidence/upload").hasAnyRole("ADMIN", "MANAGER", "OPERATOR")
                             .requestMatchers("/api/simulation/**").hasAnyRole("ADMIN", "MANAGER", "OPERATOR")
                             .requestMatchers(HttpMethod.DELETE, "/api/cameras/**").hasAnyRole("ADMIN", "MANAGER")
                             .requestMatchers(HttpMethod.POST, "/api/cameras").hasAnyRole("ADMIN", "MANAGER")

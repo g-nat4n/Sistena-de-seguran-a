@@ -37,7 +37,7 @@ export function extractGrayscaleFrame(
 export function compareFrames(
   previous: Uint8ClampedArray,
   current: Uint8ClampedArray,
-  pixelThreshold = 28,
+  pixelThreshold = 34,
 ): MotionSample {
   const totalPixels = Math.min(previous.length, current.length)
   let changedPixels = 0
@@ -56,7 +56,8 @@ export function compareFrames(
 }
 
 export function classifyMotion(score: number): 'idle' | 'low' | 'suspicious' {
-  if (score >= 0.12) return 'suspicious'
-  if (score >= 0.04) return 'low'
+  // Limiares mais altos = menos alerta por ruído de câmera/luz
+  if (score >= 0.22) return 'suspicious'
+  if (score >= 0.09) return 'low'
   return 'idle'
 }

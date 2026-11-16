@@ -10,6 +10,11 @@ interface AlertDetailPanelProps {
   onClose: () => void
 }
 
+function isVideoEvidence(url: string): boolean {
+  const lower = url.toLowerCase()
+  return lower.includes('.webm') || lower.includes('.mp4') || lower.includes('video/')
+}
+
 export function AlertDetailPanel({ alert, onUpdated, onClose }: AlertDetailPanelProps) {
   const [status, setStatus] = useState(alert.status)
   const [notes, setNotes] = useState('')
@@ -45,11 +50,20 @@ export function AlertDetailPanel({ alert, onUpdated, onClose }: AlertDetailPanel
         <div className="grid gap-4 p-4 md:grid-cols-2">
           <div className="space-y-3">
             {alert.evidenceUrl ? (
-              <img
-                src={alert.evidenceUrl}
-                alt="Evidência ilustrativa simulada"
-                className="aspect-video w-full rounded-lg object-cover"
-              />
+              isVideoEvidence(alert.evidenceUrl) ? (
+                <video
+                  src={alert.evidenceUrl}
+                  controls
+                  playsInline
+                  className="aspect-video w-full rounded-lg bg-black object-contain"
+                />
+              ) : (
+                <img
+                  src={alert.evidenceUrl}
+                  alt="Evidência do alerta"
+                  className="aspect-video w-full rounded-lg object-cover"
+                />
+              )
             ) : null}
             <p className="text-sm leading-relaxed text-sg-text">{alert.description}</p>
             <div className="flex flex-wrap gap-2">

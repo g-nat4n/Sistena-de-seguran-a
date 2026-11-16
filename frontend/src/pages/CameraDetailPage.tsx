@@ -82,8 +82,8 @@ export function CameraDetailPage() {
               <div className="flex aspect-video items-center justify-center text-sg-muted">Sem mídia demo</div>
             )}
             <div className="border-t border-sg-border px-4 py-3 text-xs text-sg-muted">
-              Com o stream iniciado, o Vision Service analisa pessoas de forma anônima (YOLO) e envia alertas à
-              central. Preview ao vivo no painel ainda é demonstrativo · {formatDateTime(camera.updatedAt)}
+              Com o stream iniciado, o Vision analisa pose anônima (loitering / possível ocultação) e envia
+              alertas com evidência. Não declara furto sozinho · {formatDateTime(camera.updatedAt)}
             </div>
           </div>
 

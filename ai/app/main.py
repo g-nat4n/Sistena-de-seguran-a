@@ -1,4 +1,4 @@
-"""SmartGuard Vision Service — Fase A/B (RTSP + detecção anônima)."""
+"""SmartGuard Vision Service — Fase A/B/C (RTSP + pose + comportamento)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app.config import DETECTION_ENABLED, EVIDENCE_DIR
+from app.config import DETECTION_ENABLED, EVIDENCE_DIR, LOITERING_SECONDS
 from app.rtsp.stream_manager import stream_manager
 from app.security import require_service_token
 
@@ -17,8 +17,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 
 app = FastAPI(
     title="SmartGuard Vision Service",
-    version="0.2.0",
-    description="RTSP Intelbras + detecção anônima de pessoas (YOLO/HOG). Sem reconhecimento facial.",
+    version="0.3.0",
+    description=(
+        "RTSP + YOLO-Pose: loitering e possível ocultação anônimos. "
+        "Sem reconhecimento facial. Não declara furto automaticamente."
+    ),
 )
 
 Path(EVIDENCE_DIR).mkdir(parents=True, exist_ok=True)
@@ -40,9 +43,12 @@ def health() -> dict:
     return {
         "status": "UP",
         "service": "smartguard-vision",
-        "phase": "B-detection",
+        "phase": "C-behavior",
         "detectionEnabled": DETECTION_ENABLED,
+        "loiteringSeconds": LOITERING_SECONDS,
+        "behaviors": ["UNUSUAL_DWELL", "POSSIBLE_CONCEALMENT", "SUSPICIOUS_MOVEMENT"],
         "facialRecognition": False,
+        "declaresCrime": False,
     }
 
 

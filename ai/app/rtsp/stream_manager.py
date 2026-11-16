@@ -1,4 +1,4 @@
-"""Gerenciador de streams RTSP com reconexão, heartbeat e detecção (Fase B)."""
+"""Gerenciador de streams RTSP com reconexão, heartbeat e detecção (Fase B/C)."""
 
 from __future__ import annotations
 
@@ -21,10 +21,11 @@ from app.config import (
     SERVICE_TOKEN,
     YOLO_CONFIDENCE,
     YOLO_MODEL,
+    YOLO_POSE_MODEL,
 )
 from app.detection.centroid_tracker import CentroidTracker
 from app.detection.event_engine import EventEngine
-from app.detection.person_detector import PersonDetector
+from app.detection.pose_detector import PosePersonDetector
 from app.rtsp.connection import mask_rtsp_url, probe_rtsp
 
 logger = logging.getLogger("smartguard.rtsp")
@@ -43,12 +44,16 @@ class StreamManager:
     def __init__(self) -> None:
         self._streams: Dict[int, StreamHandle] = {}
         self._lock = threading.Lock()
-        self._detector: PersonDetector | None = None
+        self._detector: PosePersonDetector | None = None
         self._event_engine = EventEngine()
 
-    def _get_detector(self) -> PersonDetector:
+    def _get_detector(self) -> PosePersonDetector:
         if self._detector is None:
-            self._detector = PersonDetector(confidence=YOLO_CONFIDENCE, model_name=YOLO_MODEL)
+            self._detector = PosePersonDetector(
+                confidence=YOLO_CONFIDENCE,
+                pose_model=YOLO_POSE_MODEL,
+                box_model=YOLO_MODEL,
+            )
         return self._detector
 
     def test(self, camera_id: int, rtsp_url: str, camera_identifier: str = "") -> dict:

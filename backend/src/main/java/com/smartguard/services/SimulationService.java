@@ -112,10 +112,7 @@ public class SimulationService {
                 .alert(saved)
                 .mediaUrl(evidenceUrl == null ? "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800" : evidenceUrl)
                 .mediaType("image")
-                .caption((simulated
-                        ? "Evidência ilustrativa (simulada) — "
-                        : "Snapshot anônimo do Vision/RTSP — ")
-                        + alertLabelMapper.toLabel(type))
+                .caption(captionFor(evidenceUrl, simulated, type))
                 .build());
 
         occurrenceHistoryRepository.save(OccurrenceHistory.builder()
@@ -160,5 +157,18 @@ public class SimulationService {
         return "Evento simulado: " + alertLabelMapper.toLabel(type)
                 + " detectado na câmera " + camera.getName()
                 + " (" + camera.getLocation() + "). Não é uma detecção real.";
+    }
+
+    private String captionFor(String evidenceUrl, boolean simulated, AlertType type) {
+        String label = alertLabelMapper.toLabel(type);
+        boolean looksLikeVideo = evidenceUrl != null
+                && (evidenceUrl.toLowerCase().contains(".webm") || evidenceUrl.toLowerCase().contains(".mp4"));
+        if (looksLikeVideo) {
+            return "Filmagem do momento do alerta — " + label;
+        }
+        if (simulated) {
+            return "Evidência ilustrativa (simulada) — " + label;
+        }
+        return "Snapshot anônimo do Vision/RTSP — " + label;
     }
 }

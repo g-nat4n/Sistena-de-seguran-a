@@ -90,25 +90,31 @@ CRYPTO_SECRET=SmartGuardCryptoDevKey_ChangeInProd_32b
 Abra o VLC → Mídia → Abrir localização de rede e cole a URL RTSP completa.  
 Se o VLC não abrir, o SmartGuard também não conseguirá.
 
-## Fase B — Detecção anônima
+## Fase B/C — Detecção anônima + comportamento
 
 Com o stream **iniciado**, o Vision Service:
 
 1. Lê frames do RTSP
-2. Detecta pessoas com YOLO (`yolov8n`) — fallback HOG se YOLO não carregar
-3. Faz tracking anônimo por centróide
-4. Gera alertas de `SUSPICIOUS_MOVEMENT` / `UNUSUAL_DWELL`
-5. Salva snapshot em `ai/data/evidence` e envia ao backend (`simulated=false`)
+2. Detecta pessoas + pose com YOLO (`yolov8n-pose`) — fallback caixa/HOG
+3. Tracking anônimo por centróide
+4. Regras comportamentais:
+   - `UNUSUAL_DWELL` — muito tempo quase parado (loitering)
+   - `POSSIBLE_CONCEALMENT` — padrão mão→tronco/quadril (suspeita de ocultação)
+   - `SUSPICIOUS_MOVEMENT` — presença de pessoa (cooldown maior)
+5. Snapshot anotado em `ai/data/evidence` → backend (`simulated=false`)
 
-**Não** há reconhecimento facial nem identificação de identidade.
+**Não** há reconhecimento facial. **Não** declara furto/crime automaticamente — só sinaliza para revisão humana.
 
 Variáveis úteis:
 
 ```env
 DETECTION_ENABLED=true
 DETECTION_EVERY_N_FRAMES=5
+YOLO_POSE_MODEL=yolov8n-pose.pt
 YOLO_CONFIDENCE=0.45
-DWELL_SECONDS=20
+LOITERING_SECONDS=25
+LOITERING_MAX_DISPLACEMENT_PX=70
+CONCEALMENT_MIN_FRAMES=3
 ALERT_COOLDOWN_SECONDS=45
 ```
 

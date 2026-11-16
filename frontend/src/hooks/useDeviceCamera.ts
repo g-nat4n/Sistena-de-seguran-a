@@ -10,6 +10,7 @@ export function useDeviceCamera(options: UseDeviceCameraOptions = {}) {
   const { facingMode = 'environment' } = options
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const [stream, setStream] = useState<MediaStream | null>(null)
   const [active, setActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
@@ -18,6 +19,7 @@ export function useDeviceCamera(options: UseDeviceCameraOptions = {}) {
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
+    setStream(null)
     if (videoRef.current) {
       videoRef.current.srcObject = null
     }
@@ -52,11 +54,12 @@ export function useDeviceCamera(options: UseDeviceCameraOptions = {}) {
             },
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
-      streamRef.current = stream
+      const nextStream = await navigator.mediaDevices.getUserMedia(constraints)
+      streamRef.current = nextStream
+      setStream(nextStream)
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
+        videoRef.current.srcObject = nextStream
         await videoRef.current.play()
       }
 
@@ -91,6 +94,7 @@ export function useDeviceCamera(options: UseDeviceCameraOptions = {}) {
 
   return {
     videoRef,
+    stream,
     active,
     error,
     devices,

@@ -5,10 +5,11 @@ Este módulo é **independente** do backend Java e do frontend React.
 ## Escopo atual
 
 - **Fase A:** FastAPI para testar/iniciar/parar RTSP Intelbras
-- **Fase B:** detecção anônima de pessoas (YOLO/HOG) + tracking + ingestão de alertas
+- **Fase B:** detecção anônima de pessoas (YOLO/HOG) + tracking + ingestão
+- **Fase C:** YOLO-Pose — loitering e possível ocultação (sem declarar crime)
 - Simulador de eventos comportamentais
 - Protótipo de movimento (webcam local)
-- ByteTrack avançado e áreas restritas: próxima fase
+- Áreas restritas (zonas) e ByteTrack avançado: próxima fase
 
 ## O que este módulo NÃO faz
 

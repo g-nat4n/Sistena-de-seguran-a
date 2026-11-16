@@ -1,60 +1,142 @@
 import { Activity, Camera, FlipHorizontal, Square, SwitchCamera } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useClipRecorder } from '../../hooks/useClipRecorder'
 import { useDeviceCamera, type CameraFacing } from '../../hooks/useDeviceCamera'
-import { useMotionDetection } from '../../hooks/useMotionDetection'
+import { useMotionDetection, type MotionAlertEvent } from '../../hooks/useMotionDetection'
+import { uploadEvidence } from '../../services/evidenceService'
+import { fetchStoreSettings } from '../../services/settingsService'
 import { simulateEvent } from '../../services/simulationService'
-import type { AlertType } from '../../types/alerts'
-import type { MotionSample } from '../../utils/motionDetection'
 import { Badge } from '../ui/Badge'
-import { SelectField } from '../ui/SelectField'
-import { ALERT_TYPE_OPTIONS, formatDateTime } from '../../utils/labels'
+import { formatDateTime } from '../../utils/labels'
 
 interface DeviceCameraPanelProps {
   linkedCameraId?: number
   linkedCameraName?: string
 }
 
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',')
+  const mime = /data:(.*?);base64/.exec(header)?.[1] ?? 'image/jpeg'
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return new Blob([bytes], { type: mime })
+}
+
+function isAfterBusinessHours(start: string, end: string, now = new Date()): boolean {
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  const minutes = now.getHours() * 60 + now.getMinutes()
+  const startMin = sh * 60 + sm
+  const endMin = eh * 60 + em
+  if (startMin === endMin) return false
+  if (startMin < endMin) {
+    return minutes < startMin || minutes >= endMin
+  }
+  // horário que atravessa meia-noite
+  return minutes >= endMin && minutes < startMin
+}
+
 export function DeviceCameraPanel({ linkedCameraId, linkedCameraName }: DeviceCameraPanelProps) {
   const [facing, setFacing] = useState<CameraFacing>('environment')
   const [snapshot, setSnapshot] = useState<string | null>(null)
-  const [alertType, setAlertType] = useState<AlertType>('SUSPICIOUS_MOVEMENT')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const [autoDetect, setAutoDetect] = useState(false)
+  const [afterHours, setAfterHours] = useState(false)
   const camera = useDeviceCamera({ facingMode: facing })
+  const { captureClip } = useClipRecorder({
+    stream: camera.stream,
+    enabled: camera.active,
+  })
 
-  const handleSuspiciousMotion = useCallback(
-    async (sample: MotionSample) => {
-      try {
-        const created = await simulateEvent({
-          type: 'SUSPICIOUS_MOVEMENT',
-          cameraId: linkedCameraId,
-          description:
-            `Protótipo local: movimento anônimo detectado na câmera do dispositivo ` +
-            `(intensidade ${(sample.score * 100).toFixed(1)}%). ` +
-            `Não há reconhecimento facial nem identificação de pessoa.` +
-            (linkedCameraName ? ` Slot: ${linkedCameraName}.` : ''),
+  useEffect(() => {
+    void fetchStoreSettings()
+      .then((settings) => {
+        setAfterHours(isAfterBusinessHours(settings.businessHoursStart, settings.businessHoursEnd))
+      })
+      .catch(() => setAfterHours(false))
+
+    const timer = window.setInterval(() => {
+      void fetchStoreSettings()
+        .then((settings) => {
+          setAfterHours(isAfterBusinessHours(settings.businessHoursStart, settings.businessHoursEnd))
         })
-        setMessage(
-          `Movimento detectado → alerta ${created.publicId} enviado à central (protótipo, sem identificação).`,
-        )
-      } catch (err) {
-        setMessage(err instanceof Error ? err.message : 'Falha ao registrar movimento')
+        .catch(() => undefined)
+    }, 60_000)
+
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const createAlertWithClip = useCallback(
+    async (event: MotionAlertEvent) => {
+      setMessage(`Regra disparada (${event.type}) — gravando trecho...`)
+
+      let evidenceUrl: string | undefined
+      const clip = await captureClip(2500)
+      if (clip && clip.size > 0) {
+        const uploaded = await uploadEvidence(clip, `motion-${Date.now()}.webm`)
+        evidenceUrl = uploaded.url
+      } else {
+        const frame = camera.captureFrame()
+        if (frame) {
+          const uploaded = await uploadEvidence(dataUrlToBlob(frame), `motion-${Date.now()}.jpg`)
+          evidenceUrl = uploaded.url
+          setSnapshot(frame)
+        }
       }
+
+      const descriptions: Record<MotionAlertEvent['type'], string> = {
+        SUSPICIOUS_MOVEMENT:
+          `Movimentação intensa na cena (intensidade ${(event.sample.score * 100).toFixed(1)}%). ` +
+          'Critério: mudança de pixels sustentada. Sem identificação de pessoa.',
+        UNUSUAL_DWELL:
+          'Atividade contínua na cena por ~20s. Critério: permanência/movimento prolongado. Sem identificação de pessoa.',
+        AFTER_HOURS_MOVEMENT:
+          `Movimento detectado fora do horário comercial (intensidade ${(event.sample.score * 100).toFixed(1)}%). ` +
+          'Sem identificação de pessoa.',
+      }
+
+      const created = await simulateEvent({
+        type: event.type,
+        cameraId: linkedCameraId,
+        evidenceUrl,
+        description:
+          descriptions[event.type] +
+          ' Filmagem do momento anexada.' +
+          (linkedCameraName ? ` Slot: ${linkedCameraName}.` : ''),
+      })
+      setMessage(`Alerta ${created.publicId} (${event.type}) gerado com filmagem.`)
     },
-    [linkedCameraId, linkedCameraName],
+    [captureClip, camera, linkedCameraId, linkedCameraName],
+  )
+
+  const handleAlert = useCallback(
+    (event: MotionAlertEvent) => {
+      void createAlertWithClip(event).catch((err) => {
+        setMessage(err instanceof Error ? err.message : 'Falha ao registrar evento')
+      })
+    },
+    [createAlertWithClip],
   )
 
   const motion = useMotionDetection({
     videoRef: camera.videoRef,
-    enabled: camera.active && autoDetect,
-    onSuspiciousMotion: handleSuspiciousMotion,
+    enabled: camera.active,
+    afterHours,
+    onAlert: handleAlert,
   })
 
   async function handleStart() {
     setMessage(null)
     setSnapshot(null)
     await camera.start()
+    setMessage(
+      'Câmera ligada. Todas as regras ativas: movimento, permanência' +
+        (afterHours ? ' e fora do horário' : '') +
+        '. Gravação automática no alerta.',
+    )
   }
 
   function handleCapture() {
@@ -64,21 +146,17 @@ export function DeviceCameraPanel({ linkedCameraId, linkedCameraName }: DeviceCa
       return
     }
     setSnapshot(frame)
-    setMessage('Frame capturado localmente (não enviado como stream RTSP).')
+    setMessage('Frame capturado localmente.')
   }
 
-  async function handleCreateAlert() {
+  async function handleForceAlert() {
     setBusy(true)
     setMessage(null)
     try {
-      const created = await simulateEvent({
-        type: alertType,
-        cameraId: linkedCameraId,
-        description: linkedCameraName
-          ? `Evento manual a partir da câmera do dispositivo vinculada a "${linkedCameraName}". Sem reconhecimento facial.`
-          : 'Evento manual a partir da câmera do notebook/celular. Sem reconhecimento facial.',
+      await createAlertWithClip({
+        type: afterHours ? 'AFTER_HOURS_MOVEMENT' : 'SUSPICIOUS_MOVEMENT',
+        sample: { score: motion.score, changedPixels: 0, totalPixels: 0 },
       })
-      setMessage(`Alerta ${created.publicId} gerado na central.`)
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Falha ao gerar alerta')
     } finally {
@@ -90,7 +168,6 @@ export function DeviceCameraPanel({ linkedCameraId, linkedCameraName }: DeviceCa
     const next = facing === 'environment' ? 'user' : 'environment'
     setFacing(next)
     camera.stop()
-    setAutoDetect(false)
     setMessage(
       `Alternado para câmera ${next === 'environment' ? 'traseira/ambiente' : 'frontal'}. Clique em Iniciar novamente.`,
     )
@@ -106,12 +183,13 @@ export function DeviceCameraPanel({ linkedCameraId, linkedCameraName }: DeviceCa
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-lg font-semibold">Câmera deste dispositivo</h2>
             <Badge tone={camera.active ? 'green' : 'neutral'}>
-              {camera.active ? 'Ao vivo' : 'Parada'}
+              {camera.active ? 'Ao vivo + todas as regras' : 'Parada'}
             </Badge>
-            {autoDetect ? <Badge tone={motionTone}>Movimento: {motion.scorePercent}%</Badge> : null}
+            {camera.active ? <Badge tone={motionTone}>Movimento: {motion.scorePercent}%</Badge> : null}
+            {afterHours ? <Badge tone="amber">Fora do horário</Badge> : null}
           </div>
           <p className="mt-1 text-xs text-sg-muted">
-            Preview local + protótipo de detecção de movimento anônimo (diferença de frames). Sem rostos/biometria.
+            Não precisa escolher tipo de alerta: o sistema avalia todas as regras e grava o trecho automaticamente.
             {linkedCameraName ? ` Vinculada a: ${linkedCameraName}.` : ''}
           </p>
         </div>
@@ -127,10 +205,7 @@ export function DeviceCameraPanel({ linkedCameraId, linkedCameraName }: DeviceCa
           ) : (
             <button
               type="button"
-              onClick={() => {
-                setAutoDetect(false)
-                camera.stop()
-              }}
+              onClick={() => camera.stop()}
               className="inline-flex items-center gap-2 rounded-lg border border-sg-red/40 px-3 py-2 text-sm text-sg-red"
             >
               <Square size={14} /> Parar
@@ -161,7 +236,7 @@ export function DeviceCameraPanel({ linkedCameraId, linkedCameraName }: DeviceCa
                 Clique em “Iniciar câmera” e autorize o acesso no navegador.
               </div>
             ) : null}
-            {camera.active && autoDetect ? (
+            {camera.active ? (
               <div className="absolute left-3 top-3">
                 <Badge tone={motionTone}>
                   <Activity size={12} className="mr-1" />
@@ -169,55 +244,32 @@ export function DeviceCameraPanel({ linkedCameraId, linkedCameraName }: DeviceCa
                     ? 'Movimento suspeito'
                     : motion.level === 'low'
                       ? 'Movimento leve'
-                      : 'Estável'}
+                      : 'Monitorando'}
                 </Badge>
               </div>
             ) : null}
           </div>
 
-          {camera.devices.length > 1 ? (
-            <SelectField
-              label="Dispositivo de vídeo"
-              value={camera.deviceId}
-              emptyLabel="Padrão do sistema"
-              options={camera.devices.map((device, index) => ({
-                value: device.deviceId,
-                label: device.label || `Câmera ${index + 1}`,
-              }))}
-              onChange={(value) => {
-                camera.setDeviceId(value)
-                camera.stop()
-                setAutoDetect(false)
-                setMessage('Dispositivo alterado. Clique em Iniciar câmera.')
-              }}
-            />
-          ) : null}
-
           {camera.error ? <p className="text-sm text-sg-red">{camera.error}</p> : null}
           {message ? <p className="text-sm text-sg-muted">{message}</p> : null}
 
           <p className="rounded-lg border border-dashed border-sg-border p-3 text-xs text-sg-muted">
-            A detecção compara frames em escala de cinza no próprio navegador. Ela não sabe quem é a pessoa —
-            apenas que houve mudança significativa na cena. Cooldown de ~20s entre alertas automáticos.
+            Webcam com limiares mais rígidos (~22% mudança, 5 ciclos, dwell 35s, cooldown 45s) para reduzir
+            falso positivo. Ocultação/loitering precisos ficam no Vision/RTSP (YOLO-Pose).
           </p>
         </div>
 
         <aside className="space-y-3">
-          <label className="flex items-center justify-between gap-3 rounded-lg border border-sg-border bg-sg-bg/50 px-3 py-2 text-sm">
-            <span>
-              Detecção automática de movimento
-              <span className="mt-0.5 block text-xs text-sg-muted">Protótipo local (sem YOLO ainda)</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={autoDetect}
-              disabled={!camera.active}
-              onChange={(e) => setAutoDetect(e.target.checked)}
-              className="h-4 w-4 accent-sg-green"
-            />
-          </label>
+          <div className="rounded-lg border border-sg-border p-3 text-xs text-sg-muted">
+            <p className="mb-2 font-medium text-sg-text">Regras ativas (sem seleção)</p>
+            <ul className="list-inside list-disc space-y-1">
+              {motion.activeRules.map((rule) => (
+                <li key={rule}>{rule}</li>
+              ))}
+            </ul>
+          </div>
 
-          {autoDetect ? (
+          {camera.active ? (
             <div className="rounded-lg border border-sg-border p-3 text-xs text-sg-muted">
               <p>
                 Intensidade atual: <span className="text-sg-text">{motion.scorePercent}%</span>
@@ -237,7 +289,7 @@ export function DeviceCameraPanel({ linkedCameraId, linkedCameraName }: DeviceCa
               {motion.lastTriggerAt ? (
                 <p className="mt-2">Último disparo: {formatDateTime(new Date(motion.lastTriggerAt).toISOString())}</p>
               ) : (
-                <p className="mt-2">Mova-se na frente da câmera para testar.</p>
+                <p className="mt-2">Mova-se na frente da câmera para disparar + gravar.</p>
               )}
             </div>
           ) : null}
@@ -253,21 +305,13 @@ export function DeviceCameraPanel({ linkedCameraId, linkedCameraName }: DeviceCa
             </button>
           </div>
 
-          <SelectField
-            label="Tipo de alerta manual"
-            value={alertType}
-            allowEmpty={false}
-            options={ALERT_TYPE_OPTIONS}
-            onChange={(value) => setAlertType(value as AlertType)}
-          />
-
           <button
             type="button"
-            disabled={busy}
-            onClick={() => void handleCreateAlert()}
+            disabled={busy || !camera.active}
+            onClick={() => void handleForceAlert()}
             className="w-full rounded-lg bg-sg-blue px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
-            {busy ? 'Gerando...' : 'Gerar alerta manual'}
+            {busy ? 'Gerando...' : 'Forçar alerta agora (com filmagem)'}
           </button>
 
           {snapshot ? (

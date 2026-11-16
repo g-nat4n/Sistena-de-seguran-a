@@ -1,0 +1,10 @@
+.venv
+__pycache__
+*.pt
+data/evidence/*
+!data/evidence/.gitkeep
+.env
+.git
+*.md
+scripts
+src

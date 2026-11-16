@@ -1,0 +1,58 @@
+# Deploy em VPS: docker compose -f docker-compose.prod.yml up -d --build
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartguard
+      POSTGRES_USER: smartguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartguard}
+    volumes:
+      - smartguard_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartguard -d smartguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/smartguard
+      DB_USERNAME: smartguard
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-smartguard}
+      SERVER_PORT: 8080
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      JWT_SECRET: ${JWT_SECRET:-SmartGuardAiDevSecretKey_ChangeMe_32charsMin!!}
+      CRYPTO_SECRET: ${CRYPTO_SECRET:-SmartGuardCryptoDevKey_ChangeInProd_32b}
+      VISION_BASE_URL: http://vision:8090
+      VISION_SERVICE_TOKEN: ${VISION_SERVICE_TOKEN:-smartguard-vision-dev-token}
+      EVIDENCE_DIR: /app/data/evidence
+    ports:
+      - "8080:8080"
+    volumes:
+      - api_evidence:/app/data/evidence
+
+  vision:
+    build: ./ai
+    restart: unless-stopped
+    environment:
+      SMARTGUARD_API_URL: http://api:8080/api
+      VISION_SERVICE_TOKEN: ${VISION_SERVICE_TOKEN:-smartguard-vision-dev-token}
+      VISION_PUBLIC_BASE_URL: ${VISION_PUBLIC_BASE_URL:-http://localhost:8090}
+      DETECTION_ENABLED: "true"
+      PERSON_ALERT_ENABLED: "false"
+      EVIDENCE_DIR: /app/data/evidence
+    ports:
+      - "8090:8090"
+    volumes:
+      - vision_evidence:/app/data/evidence
+
+volumes:
+  smartguard_pg_data:
+  api_evidence:
+  vision_evidence:

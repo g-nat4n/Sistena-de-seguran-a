@@ -10,6 +10,6 @@ public record SimulateEventRequest(
         AlertPriority priority,
         Long cameraId,
         @Size(max = 500) String description,
-        @Size(max = 500) String evidenceUrl
+        @Size(max = 1000) String evidenceUrl
 ) {
 }

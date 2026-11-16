@@ -16,9 +16,14 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
 
 server:
-  port: ${SERVER_PORT:8080}
+  # PORT = Render/Railway; SERVER_PORT = local/docker
+  port: ${PORT:${SERVER_PORT:8080}}
 
 smartguard:
   cors:
@@ -34,6 +39,8 @@ smartguard:
   vision:
     base-url: ${VISION_BASE_URL:http://127.0.0.1:8090}
     service-token: ${VISION_SERVICE_TOKEN:smartguard-vision-dev-token}
+  evidence:
+    dir: ${EVIDENCE_DIR:./data/evidence}
 
 logging:
   level:
