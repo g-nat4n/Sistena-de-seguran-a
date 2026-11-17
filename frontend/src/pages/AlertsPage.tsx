@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AlertDetailPanel } from '../components/alerts/AlertDetailPanel'
 import { Badge } from '../components/ui/Badge'
@@ -7,7 +8,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { SelectField } from '../components/ui/SelectField'
 import { TextField } from '../components/ui/TextField'
 import { usePolling } from '../hooks/usePolling'
-import { fetchAlertById, fetchAlerts } from '../services/alertService'
+import { deleteAlert, fetchAlertById, fetchAlerts } from '../services/alertService'
 import { fetchCameras } from '../services/cameraService'
 import type { AlertFilters, AlertItem } from '../types/alerts'
 import type { Camera } from '../types/camera'
@@ -55,6 +56,17 @@ export function AlertsPage() {
       setSelected(await fetchAlertById(id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao abrir alerta')
+    }
+  }
+
+  async function handleDelete(id: number, publicId: string) {
+    if (!window.confirm(`Excluir o alerta ${publicId}? Esta ação não pode ser desfeita.`)) return
+    try {
+      await deleteAlert(id)
+      setAlerts((prev) => prev.filter((item) => item.id !== id))
+      if (selected?.id === id) setSelected(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao excluir alerta')
     }
   }
 
@@ -182,13 +194,22 @@ export function AlertsPage() {
                   <td className="px-3 py-3">{statusLabel(alert.status)}</td>
                   <td className="px-3 py-3 text-sg-muted">{formatDateTime(alert.occurredAt)}</td>
                   <td className="px-3 py-3">
-                    <button
-                      type="button"
-                      onClick={() => void openDetails(alert.id)}
-                      className="rounded-lg border border-sg-border px-3 py-1.5 text-xs hover:border-sg-blue"
-                    >
-                      Detalhes
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void openDetails(alert.id)}
+                        className="rounded-lg border border-sg-border px-3 py-1.5 text-xs hover:border-sg-blue"
+                      >
+                        Detalhes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(alert.id, alert.publicId)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-sg-red/40 px-3 py-1.5 text-xs text-sg-red hover:bg-sg-red/10"
+                      >
+                        <Trash2 size={12} /> Excluir
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -207,6 +228,10 @@ export function AlertsPage() {
           onUpdated={(updated) => {
             setSelected(updated)
             setAlerts((prev) => prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)))
+          }}
+          onDeleted={(id) => {
+            setAlerts((prev) => prev.filter((item) => item.id !== id))
+            setSelected(null)
           }}
         />
       ) : null}

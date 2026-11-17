@@ -1,9 +1,13 @@
 package com.smartguard.controllers;
 
+import com.smartguard.dto.auth.BootstrapInfoResponse;
+import com.smartguard.dto.auth.CreateUserRequest;
 import com.smartguard.dto.auth.LoginRequest;
 import com.smartguard.dto.auth.LoginResponse;
+import com.smartguard.dto.auth.RegisterUserRequest;
 import com.smartguard.dto.auth.UserResponse;
 import com.smartguard.services.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +27,19 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @GetMapping("/bootstrap-info")
+    public BootstrapInfoResponse bootstrapInfo() {
+        return authService.bootstrapInfo();
+    }
+
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public LoginResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        return authService.login(request, clientIp(http));
+    }
+
+    @PostMapping("/register")
+    public LoginResponse register(@Valid @RequestBody RegisterUserRequest request, HttpServletRequest http) {
+        return authService.registerUser(request, clientIp(http));
     }
 
     @GetMapping("/me")
@@ -37,5 +51,23 @@ public class AuthController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public List<UserResponse> users() {
         return authService.listUsers();
+    }
+
+    @PostMapping("/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserResponse createUser(
+            @Valid @RequestBody CreateUserRequest request,
+            @AuthenticationPrincipal UserDetails principal,
+            HttpServletRequest http
+    ) {
+        return authService.createUser(request, principal.getUsername(), clientIp(http));
+    }
+
+    private static String clientIp(HttpServletRequest http) {
+        String forwarded = http.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return http.getRemoteAddr();
     }
 }

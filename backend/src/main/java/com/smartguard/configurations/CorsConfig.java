@@ -1,5 +1,6 @@
 package com.smartguard.configurations;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,11 +17,23 @@ public class CorsConfig {
     CorsConfigurationSource corsConfigurationSource(
             @Value("${smartguard.cors.allowed-origins}") String allowedOrigins) {
         CorsConfiguration config = new CorsConfiguration();
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+        List<String> origins = new ArrayList<>(Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isBlank())
-                .toList();
+                .toList());
+        // Electron loadFile usa origin "null"
+        if (!origins.contains("null")) {
+            origins.add("null");
+        }
         config.setAllowedOrigins(origins);
+        // Padrões para file:// e app desktop local
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "app://*",
+                "file://*",
+                "null"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

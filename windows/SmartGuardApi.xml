@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- WinSW service definition: https://github.com/winsw/winsw -->
+<service>
+  <id>SmartGuardApi</id>
+  <name>SmartGuard API</name>
+  <description>SmartGuard — API e banco local (monitoramento contínuo)</description>
+  <executable>%BASE%\runtime\jre\bin\java.exe</executable>
+  <arguments>-Xms256m -Xmx1024m -jar "%BASE%\api\smartguard-api.jar"</arguments>
+  <workingdirectory>%BASE%\api</workingdirectory>
+  <env name="SPRING_PROFILES_ACTIVE" value="sqlite"/>
+  <env name="SERVER_ADDRESS" value="0.0.0.0"/>
+  <env name="SERVER_PORT" value="8080"/>
+  <env name="SMARTGUARD_NETWORK_MODE" value="server"/>
+  <env name="SMARTGUARD_DATA_DIR" value="%ProgramData%\SmartGuard\data"/>
+  <env name="CORS_ORIGINS" value="http://localhost:3080,http://127.0.0.1:3080,app://smartguard,http://localhost:5173"/>
+  <logpath>%ProgramData%\SmartGuard\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+  <onfailure action="restart" delay="5 sec"/>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <startmode>Automatic</startmode>
+  <stoptimeout>20 sec</stoptimeout>
+</service>

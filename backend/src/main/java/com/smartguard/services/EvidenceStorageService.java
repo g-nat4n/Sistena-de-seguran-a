@@ -1,14 +1,13 @@
 package com.smartguard.services;
 
 import com.smartguard.exceptions.BusinessException;
+import com.smartguard.runtime.AppPaths;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -26,8 +25,8 @@ public class EvidenceStorageService {
 
     private final Path root;
 
-    public EvidenceStorageService(@Value("${smartguard.evidence.dir:./data/evidence}") String evidenceDir) {
-        this.root = Paths.get(evidenceDir).toAbsolutePath().normalize();
+    public EvidenceStorageService(AppPaths appPaths) {
+        this.root = appPaths.evidenceDir();
         try {
             Files.createDirectories(this.root);
         } catch (IOException ex) {
@@ -36,6 +35,10 @@ public class EvidenceStorageService {
     }
 
     public record StoredEvidence(String filename, String mediaType, String url, long sizeBytes) {
+    }
+
+    public Path root() {
+        return root;
     }
 
     public StoredEvidence store(MultipartFile file) {

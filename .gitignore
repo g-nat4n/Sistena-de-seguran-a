@@ -39,6 +39,18 @@ backend/data/evidence/*
 *.pt
 runs/
 
+# Desktop local data / packaging
+data-desktop-test/
+windows/dist/
+windows/winsw/*.exe
+windows/SmartGuardApi.exe
+windows/SmartGuardVision.exe
+desktop/renderer/
+frontend/dev-dist/
+cp.txt
+backend/T.java
+backend/cp.txt
+
 # OS / misc
 *.tmp
 *.swp

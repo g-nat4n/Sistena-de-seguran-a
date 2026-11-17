@@ -1,13 +1,15 @@
+import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import type { AlertItem, AlertStatus } from '../../types/alerts'
 import { Badge } from '../ui/Badge'
 import { ALERT_STATUS_OPTIONS, formatDateTime, priorityLabel, statusLabel } from '../../utils/labels'
-import { updateAlertStatus } from '../../services/alertService'
+import { deleteAlert, updateAlertStatus } from '../../services/alertService'
 
 interface AlertDetailPanelProps {
   alert: AlertItem
   onUpdated: (alert: AlertItem) => void
   onClose: () => void
+  onDeleted?: (id: number) => void
 }
 
 function isVideoEvidence(url: string): boolean {
@@ -15,10 +17,11 @@ function isVideoEvidence(url: string): boolean {
   return lower.includes('.webm') || lower.includes('.mp4') || lower.includes('video/')
 }
 
-export function AlertDetailPanel({ alert, onUpdated, onClose }: AlertDetailPanelProps) {
+export function AlertDetailPanel({ alert, onUpdated, onClose, onDeleted }: AlertDetailPanelProps) {
   const [status, setStatus] = useState(alert.status)
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleSave() {
@@ -31,6 +34,21 @@ export function AlertDetailPanel({ alert, onUpdated, onClose }: AlertDetailPanel
       setError(err instanceof Error ? err.message : 'Falha ao atualizar status')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`Excluir o alerta ${alert.publicId}? Esta ação não pode ser desfeita.`)) return
+    setDeleting(true)
+    setError(null)
+    try {
+      await deleteAlert(alert.id)
+      onDeleted?.(alert.id)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao excluir alerta')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -97,14 +115,25 @@ export function AlertDetailPanel({ alert, onUpdated, onClose }: AlertDetailPanel
                 className="mt-2 min-h-24 w-full rounded-lg border border-sg-border bg-sg-bg px-3 py-2 text-sm"
               />
               {error ? <p className="mt-2 text-xs text-sg-red">{error}</p> : null}
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => void handleSave()}
-                className="mt-3 rounded-lg bg-sg-blue px-4 py-2 text-sm font-medium text-white transition hover:bg-sg-blue/90 disabled:opacity-60"
-              >
-                {saving ? 'Salvando...' : 'Salvar status'}
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={saving || deleting}
+                  onClick={() => void handleSave()}
+                  className="rounded-lg bg-sg-blue px-4 py-2 text-sm font-medium text-white transition hover:bg-sg-blue/90 disabled:opacity-60"
+                >
+                  {saving ? 'Salvando...' : 'Salvar status'}
+                </button>
+                <button
+                  type="button"
+                  disabled={saving || deleting}
+                  onClick={() => void handleDelete()}
+                  className="inline-flex items-center gap-1 rounded-lg border border-sg-red/40 px-4 py-2 text-sm text-sg-red hover:bg-sg-red/10 disabled:opacity-60"
+                >
+                  <Trash2 size={14} />
+                  {deleting ? 'Excluindo...' : 'Excluir alerta'}
+                </button>
+              </div>
             </div>
 
             <div>

@@ -1,0 +1,5 @@
+SmartGuard AI
+Software de monitoramento inteligente para lojas.
+
+Cada instalação possui banco local independente.
+Não utilize para reconhecimento facial ou acusação automática de crime.

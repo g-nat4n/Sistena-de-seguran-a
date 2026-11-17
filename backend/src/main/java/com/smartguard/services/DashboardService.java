@@ -87,10 +87,11 @@ public class DashboardService {
             buckets.put(String.format("%02d:00", hour), 0L);
         }
 
-        for (Object[] row : alertRepository.countGroupedByHour(dayStart, dayEnd)) {
-            String hour = String.valueOf(row[0]);
-            long count = ((Number) row[1]).longValue();
-            buckets.put(hour, count);
+        // Agregação em Java (compatível com SQLite e Postgres)
+        for (Alert alert : alertRepository.findByOccurredAtBetweenOrderByOccurredAtAsc(dayStart, dayEnd)) {
+            int hour = alert.getOccurredAt().atZone(ZoneOffset.UTC).getHour();
+            String key = String.format("%02d:00", hour);
+            buckets.merge(key, 1L, Long::sum);
         }
 
         List<HourlyAlertPoint> points = new ArrayList<>();

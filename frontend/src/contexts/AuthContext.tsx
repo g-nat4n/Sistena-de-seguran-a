@@ -1,16 +1,38 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { fetchMe, getToken, login as loginRequest, logout as logoutRequest } from '../services/authService'
+import {
+  fetchMe,
+  getToken,
+  login as loginRequest,
+  logout as logoutRequest,
+  registerUser as registerRequest,
+  type RegisterPayload,
+} from '../services/authService'
 import type { AuthUser } from '../types/auth'
 
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
+  register: (payload: RegisterPayload) => Promise<void>
   logout: () => void
   hasRole: (...roles: string[]) => boolean
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+
+function toUser(response: {
+  userId: number
+  name: string
+  email: string
+  roles: string[] | Set<string>
+}): AuthUser {
+  return {
+    id: response.userId,
+    name: response.name,
+    email: response.email,
+    roles: Array.isArray(response.roles) ? response.roles : [...response.roles],
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -39,13 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       async login(email, password) {
-        const response = await loginRequest(email, password)
-        setUser({
-          id: response.userId,
-          name: response.name,
-          email: response.email,
-          roles: response.roles,
-        })
+        setUser(toUser(await loginRequest(email, password)))
+      },
+      async register(payload) {
+        setUser(toUser(await registerRequest(payload)))
       },
       logout() {
         logoutRequest()

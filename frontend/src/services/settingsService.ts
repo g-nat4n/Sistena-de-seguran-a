@@ -24,3 +24,13 @@ export async function fetchStoreSettings(): Promise<StoreSettings> {
   const { data } = await api.get<StoreSettings>('/settings/store')
   return data
 }
+
+export async function fetchRegistrationOpen(): Promise<boolean> {
+  const { data } = await api.get<{ open: boolean }>('/settings/registration')
+  return Boolean(data.open)
+}
+
+export async function setRegistrationOpen(open: boolean): Promise<boolean> {
+  const { data } = await api.put<{ open: boolean }>('/settings/registration', { open })
+  return Boolean(data.open)
+}

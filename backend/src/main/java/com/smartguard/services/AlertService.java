@@ -58,6 +58,13 @@ public class AlertService {
     }
 
     @Transactional
+    public void delete(Long id) {
+        Alert alert = alertRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Alerta não encontrado: " + id));
+        alertRepository.delete(alert);
+    }
+
+    @Transactional
     public AlertResponse updateStatus(Long id, UpdateAlertStatusRequest request) {
         Alert alert = alertRepository.findDetailedById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Alerta não encontrado: " + id));

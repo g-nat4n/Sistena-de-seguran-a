@@ -5,12 +5,14 @@ import {
   Camera,
   History,
   LayoutDashboard,
+  Server,
   Settings,
   Shield,
   Sparkles,
   Video,
 } from 'lucide-react'
 import { useState } from 'react'
+import { ConnectionBanner } from '../components/system/ConnectionBanner'
 import { useAuth } from '../contexts/AuthContext'
 
 const navItems = [
@@ -20,6 +22,8 @@ const navItems = [
   { to: '/historico', label: 'Histórico', icon: History },
   { to: '/cameras', label: 'Câmeras', icon: Camera },
   { to: '/simulador', label: 'Simulador', icon: Sparkles },
+  { to: '/servidor', label: 'Status do servidor', icon: Server },
+  { to: '/app-setup', label: 'Este PC', icon: Settings },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
@@ -88,6 +92,7 @@ export function AppLayout() {
       ) : null}
 
       <div className="min-w-0">
+        <ConnectionBanner />
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-sg-border bg-[#0b1120]/80 px-4 backdrop-blur-md md:px-6">
           <button
             type="button"
@@ -98,7 +103,7 @@ export function AppLayout() {
           </button>
           <div className="hidden items-center gap-2 text-sm text-sg-muted lg:flex">
             <span className="inline-flex h-2 w-2 animate-pulse-dot rounded-full bg-sg-green" />
-            Sistema em operação simulada
+            Sistema local em operação
           </div>
           <div className="ml-auto flex items-center gap-3">
             <div className="text-right">

@@ -9,7 +9,8 @@ RUN chmod +x mvnw && ./mvnw -q -DskipTests package
 # Runtime
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-RUN addgroup -S smartguard && adduser -S smartguard -G smartguard \
+RUN apk add --no-cache wget \
+  && addgroup -S smartguard && adduser -S smartguard -G smartguard \
   && mkdir -p /app/data/evidence && chown -R smartguard:smartguard /app
 COPY --from=build /app/target/*.jar /app/app.jar
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh

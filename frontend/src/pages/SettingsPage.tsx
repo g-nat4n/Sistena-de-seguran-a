@@ -5,17 +5,25 @@ import { LoadingState } from '../components/ui/LoadingState'
 import { PageHeader } from '../components/ui/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
 import { fetchUsers } from '../services/authService'
-import { fetchStoreSettings, type StoreSettings } from '../services/settingsService'
+import {
+  fetchRegistrationOpen,
+  fetchStoreSettings,
+  setRegistrationOpen,
+  type StoreSettings,
+} from '../services/settingsService'
 import type { AuthUser } from '../types/auth'
 import { priorityLabel } from '../utils/labels'
 
 export function SettingsPage() {
   const { hasRole } = useAuth()
   const canManage = hasRole('ADMIN', 'MANAGER')
+  const isAdmin = hasRole('ADMIN')
   const [settings, setSettings] = useState<StoreSettings | null>(null)
   const [users, setUsers] = useState<AuthUser[]>([])
+  const [registrationOpen, setRegistrationOpenState] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [savingReg, setSavingReg] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -29,6 +37,9 @@ export function SettingsPage() {
         const [store, userList] = await Promise.all([fetchStoreSettings(), fetchUsers()])
         setSettings(store)
         setUsers(userList)
+        if (isAdmin) {
+          setRegistrationOpenState(await fetchRegistrationOpen())
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Falha ao carregar configurações')
       } finally {
@@ -36,7 +47,7 @@ export function SettingsPage() {
       }
     }
     void load()
-  }, [canManage])
+  }, [canManage, isAdmin])
 
   if (!canManage) {
     return (
@@ -65,8 +76,8 @@ export function SettingsPage() {
           <h2 className="font-display text-lg font-semibold">Loja</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div><dt className="text-xs text-sg-muted">Nome</dt><dd>{settings.name}</dd></div>
-            <div><dt className="text-xs text-sg-muted">Endereço</dt><dd>{settings.address}</dd></div>
-            <div><dt className="text-xs text-sg-muted">Telefone</dt><dd>{settings.phone}</dd></div>
+            <div><dt className="text-xs text-sg-muted">Endereço</dt><dd>{settings.address || '—'}</dd></div>
+            <div><dt className="text-xs text-sg-muted">Telefone</dt><dd>{settings.phone || '—'}</dd></div>
             <div>
               <dt className="text-xs text-sg-muted">Horário comercial</dt>
               <dd>{settings.businessHoursStart} — {settings.businessHoursEnd}</dd>
@@ -76,6 +87,33 @@ export function SettingsPage() {
 
         <section className="rounded-xl border border-sg-border bg-sg-card/90 p-4">
           <h2 className="font-display text-lg font-semibold">Usuários e permissões</h2>
+          {isAdmin && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-sg-border bg-sg-bg/40 p-3">
+              <div>
+                <p className="text-sm font-medium text-sg-text">Liberar novos cadastros</p>
+                <p className="text-xs text-sg-muted">
+                  Quando ativo, outras pessoas podem se cadastrar na tela de login (como operador).
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={savingReg}
+                onClick={async () => {
+                  setSavingReg(true)
+                  try {
+                    setRegistrationOpenState(await setRegistrationOpen(!registrationOpen))
+                  } finally {
+                    setSavingReg(false)
+                  }
+                }}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold ${
+                  registrationOpen ? 'bg-sg-green/20 text-sg-green' : 'bg-sg-border/40 text-sg-muted'
+                }`}
+              >
+                {registrationOpen ? 'Cadastro aberto' : 'Cadastro fechado'}
+              </button>
+            </div>
+          )}
           <div className="mt-3 space-y-2">
             {users.map((user) => (
               <div key={user.id} className="rounded-lg border border-sg-border p-3 text-sm">

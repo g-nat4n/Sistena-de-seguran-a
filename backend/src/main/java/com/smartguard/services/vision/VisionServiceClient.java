@@ -74,6 +74,18 @@ public class VisionServiceClient {
         return message.replaceAll("rtsp://[^\\s]+", "rtsp://***");
     }
 
+    public boolean isReachable() {
+        try {
+            Map<?, ?> body = restClient.get()
+                    .uri("/health")
+                    .retrieve()
+                    .body(Map.class);
+            return body != null;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
     public record VisionOperationResult(boolean success, String message) {
     }
 }

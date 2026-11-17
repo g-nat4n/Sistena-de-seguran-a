@@ -53,13 +53,19 @@ public class SecurityConfig {
                         auth.anyRequest().permitAll();
                         return;
                     }
-                    auth.requestMatchers("/api/health", "/api/auth/login").permitAll()
+                    auth.requestMatchers(
+                                    "/api/health",
+                                    "/api/auth/login",
+                                    "/api/auth/register",
+                                    "/api/auth/bootstrap-info"
+                            ).permitAll()
                             .requestMatchers("/api/internal/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/evidence/files/**").permitAll()
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                             .requestMatchers(HttpMethod.POST, "/api/evidence/upload").hasAnyRole("ADMIN", "MANAGER", "OPERATOR")
                             .requestMatchers("/api/simulation/**").hasAnyRole("ADMIN", "MANAGER", "OPERATOR")
                             .requestMatchers(HttpMethod.DELETE, "/api/cameras/**").hasAnyRole("ADMIN", "MANAGER")
+                            .requestMatchers(HttpMethod.DELETE, "/api/alerts/**").hasAnyRole("ADMIN", "MANAGER", "OPERATOR")
                             .requestMatchers(HttpMethod.POST, "/api/cameras").hasAnyRole("ADMIN", "MANAGER")
                             .requestMatchers(HttpMethod.PUT, "/api/cameras/**").hasAnyRole("ADMIN", "MANAGER")
                             .anyRequest().authenticated();

@@ -1,0 +1,57 @@
+{
+  "name": "smartguard-desktop",
+  "version": "1.0.0",
+  "description": "SmartGuard AI — aplicativo Windows",
+  "main": "src/main.js",
+  "author": "SmartGuard",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "local.smartguard.app",
+    "productName": "SmartGuard AI",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "src/**/*",
+      "splash/**/*",
+      "renderer/**/*",
+      "assets/**/*",
+      "config.example.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../windows/dist/api",
+        "to": "api",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../windows",
+        "to": "windows",
+        "filter": ["*.xml", "scripts/**/*"]
+      }
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/icon.ico",
+      "artifactName": "SmartGuard-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SmartGuard AI",
+      "license": "license.txt"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  }
+}

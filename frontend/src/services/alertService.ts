@@ -28,3 +28,7 @@ export async function updateAlertStatus(
   const { data } = await api.patch<AlertItem>(`/alerts/${id}/status`, { status, notes })
   return data
 }
+
+export async function deleteAlert(id: number): Promise<void> {
+  await api.delete(`/alerts/${id}`)
+}

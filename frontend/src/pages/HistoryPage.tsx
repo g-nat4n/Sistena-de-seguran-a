@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AlertDetailPanel } from '../components/alerts/AlertDetailPanel'
 import { Badge } from '../components/ui/Badge'
@@ -6,7 +7,7 @@ import { LoadingState } from '../components/ui/LoadingState'
 import { PageHeader } from '../components/ui/PageHeader'
 import { SelectField } from '../components/ui/SelectField'
 import { TextField } from '../components/ui/TextField'
-import { fetchAlertById, fetchAlerts } from '../services/alertService'
+import { deleteAlert, fetchAlertById, fetchAlerts } from '../services/alertService'
 import { fetchCameras } from '../services/cameraService'
 import type { AlertItem } from '../types/alerts'
 import type { Camera } from '../types/camera'
@@ -47,6 +48,17 @@ export function HistoryPage() {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function handleDelete(id: number, publicId: string) {
+    if (!window.confirm(`Excluir a ocorrência ${publicId}? Esta ação não pode ser desfeita.`)) return
+    try {
+      await deleteAlert(id)
+      setItems((prev) => prev.filter((item) => item.id !== id))
+      if (selected?.id === id) setSelected(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao excluir ocorrência')
+    }
+  }
 
   return (
     <div>
@@ -99,13 +111,22 @@ export function HistoryPage() {
                   {item.cameraName} · {formatDateTime(item.occurredAt)}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={async () => setSelected(await fetchAlertById(item.id))}
-                className="rounded-lg border border-sg-border px-3 py-1.5 text-sm hover:border-sg-blue"
-              >
-                Ver detalhes e evidências
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={async () => setSelected(await fetchAlertById(item.id))}
+                  className="rounded-lg border border-sg-border px-3 py-1.5 text-sm hover:border-sg-blue"
+                >
+                  Ver detalhes e evidências
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDelete(item.id, item.publicId)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-sg-red/40 px-3 py-1.5 text-sm text-sg-red hover:bg-sg-red/10"
+                >
+                  <Trash2 size={14} /> Excluir
+                </button>
+              </div>
             </article>
           ))}
           {items.length === 0 ? (
@@ -123,6 +144,10 @@ export function HistoryPage() {
           onUpdated={(updated) => {
             setSelected(updated)
             setItems((prev) => prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)))
+          }}
+          onDeleted={(id) => {
+            setItems((prev) => prev.filter((item) => item.id !== id))
+            setSelected(null)
           }}
         />
       ) : null}

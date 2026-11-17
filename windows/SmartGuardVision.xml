@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service>
+  <id>SmartGuardVision</id>
+  <name>SmartGuard Vision</name>
+  <description>SmartGuard — serviço de visão / RTSP</description>
+  <executable>%BASE%\vision\python\python.exe</executable>
+  <arguments>-m uvicorn app.main:app --host 127.0.0.1 --port 8090</arguments>
+  <workingdirectory>%BASE%\vision\app</workingdirectory>
+  <env name="SMARTGUARD_API_URL" value="http://127.0.0.1:8080/api"/>
+  <env name="VISION_SERVICE_TOKEN" value="smartguard-vision-dev-token"/>
+  <env name="VISION_PUBLIC_BASE_URL" value="http://127.0.0.1:8090"/>
+  <env name="DETECTION_ENABLED" value="true"/>
+  <env name="EVIDENCE_DIR" value="%ProgramData%\SmartGuard\data\evidence"/>
+  <logpath>%ProgramData%\SmartGuard\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+  <onfailure action="restart" delay="8 sec"/>
+  <onfailure action="restart" delay="20 sec"/>
+  <startmode>Automatic</startmode>
+  <stoptimeout>15 sec"/>
+  <depend>SmartGuardApi</depend>
+</service>

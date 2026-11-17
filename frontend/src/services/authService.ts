@@ -4,9 +4,33 @@ import type { AuthUser, LoginResponse } from '../types/auth'
 
 export { getToken, clearToken }
 
+export type RegisterPayload = {
+  name: string
+  email: string
+  password: string
+}
+
+export type BootstrapInfo = {
+  needsSetup: boolean
+  registrationOpen: boolean
+  hasLocalUsers: boolean
+  message: string
+}
+
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const { data } = await api.post<LoginResponse>('/auth/login', { email, password })
   setToken(data.accessToken)
+  return data
+}
+
+export async function registerUser(payload: RegisterPayload): Promise<LoginResponse> {
+  const { data } = await api.post<LoginResponse>('/auth/register', payload)
+  setToken(data.accessToken)
+  return data
+}
+
+export async function fetchBootstrapInfo(): Promise<BootstrapInfo> {
+  const { data } = await api.get<BootstrapInfo>('/auth/bootstrap-info')
   return data
 }
 

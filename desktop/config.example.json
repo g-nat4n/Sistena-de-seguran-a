@@ -1,0 +1,8 @@
+{
+  "mode": "standalone",
+  "apiHost": "127.0.0.1",
+  "apiPort": 8080,
+  "useHttps": false,
+  "keepApiOnExit": true,
+  "clientId": ""
+}

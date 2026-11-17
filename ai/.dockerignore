@@ -1,10 +1,7 @@
-.venv
 __pycache__
-*.pt
-data/evidence/*
-!data/evidence/.gitkeep
-.env
+.venv
+venv
 .git
-*.md
-scripts
-src
+*.pyc
+data
+.pytest_cache

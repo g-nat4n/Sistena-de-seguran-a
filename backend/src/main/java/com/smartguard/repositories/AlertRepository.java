@@ -20,22 +20,14 @@ public interface AlertRepository extends JpaRepository<Alert, Long>, JpaSpecific
 
     List<Alert> findTop10ByOrderByOccurredAtDesc();
 
+    List<Alert> findByOccurredAtBetweenOrderByOccurredAtAsc(Instant start, Instant end);
+
     @Query("""
             SELECT a FROM Alert a
             JOIN FETCH a.camera
             WHERE a.id = :id
             """)
     Optional<Alert> findDetailedById(@Param("id") Long id);
-
-    @Query(value = """
-            SELECT TO_CHAR(date_trunc('hour', occurred_at), 'HH24:00') AS hour_label,
-                   COUNT(*) AS total
-            FROM alerts
-            WHERE occurred_at >= :start AND occurred_at < :end
-            GROUP BY date_trunc('hour', occurred_at)
-            ORDER BY date_trunc('hour', occurred_at)
-            """, nativeQuery = true)
-    List<Object[]> countGroupedByHour(@Param("start") Instant start, @Param("end") Instant end);
 
     @Query("""
             SELECT a.type, COUNT(a)

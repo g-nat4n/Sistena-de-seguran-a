@@ -35,10 +35,10 @@ public class Store {
     @Column(length = 255)
     private String address;
 
-    @Column(name = "business_hours_start")
+    @Column(name = "business_hours_start", length = 16)
     private LocalTime businessHoursStart;
 
-    @Column(name = "business_hours_end")
+    @Column(name = "business_hours_end", length = 16)
     private LocalTime businessHoursEnd;
 
     @Column(length = 30)

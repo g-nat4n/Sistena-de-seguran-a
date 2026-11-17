@@ -41,10 +41,10 @@ public class User {
     @Column(nullable = false, unique = true, length = 120)
     private String email;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-    @Column(nullable = false)
+    @Column(name = "active", nullable = false, columnDefinition = "INTEGER")
     private boolean active;
 
     @ManyToOne(fetch = FetchType.LAZY)
