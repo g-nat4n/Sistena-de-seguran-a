@@ -44,26 +44,27 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request, String ipAddress) {
-        String key = request.email() + "|" + (ipAddress == null ? "" : ipAddress);
+        String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
+        String key = email + "|" + (ipAddress == null ? "" : ipAddress);
         loginRateLimiter.checkAllowed(key);
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.email(), request.password())
+                    new UsernamePasswordAuthenticationToken(email, request.password())
             );
         } catch (org.springframework.security.authentication.BadCredentialsException ex) {
             loginRateLimiter.recordFailure(key);
-            auditService.record("LOGIN_FAILED", request.email(), "Credenciais inválidas", ipAddress);
+            auditService.record("LOGIN_FAILED", email, "Credenciais inválidas", ipAddress);
             throw new BusinessException("Credenciais inválidas");
         } catch (org.springframework.security.authentication.DisabledException ex) {
             loginRateLimiter.recordFailure(key);
             throw new BusinessException("Usuário desativado");
         } catch (AuthenticationException ex) {
             loginRateLimiter.recordFailure(key);
-            auditService.record("LOGIN_FAILED", request.email(), ex.getClass().getSimpleName(), ipAddress);
+            auditService.record("LOGIN_FAILED", email, ex.getClass().getSimpleName(), ipAddress);
             throw new BusinessException("Falha na autenticação: " + ex.getClass().getSimpleName());
         }
 
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
 
         loginRateLimiter.recordSuccess(key);

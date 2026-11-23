@@ -1,53 +1,76 @@
 # Instalação Windows — SmartGuard AI
 
-Aplicativo instalável com **banco SQLite criptografado (SQLCipher) por instalação**, serviço Windows no PC principal e clientes na LAN.
+Aplicativo **standalone** para Windows: interface Electron + API + Vision embutidos.  
+Cada instalação tem **banco SQLite criptografado (SQLCipher) próprio**.
+
+## Download (cliente)
+
+1. Baixe o instalador na Release do GitHub: **`SmartGuard-AI-Setup.exe`**
+2. Se o SmartScreen aparecer (“Windows protegeu o PC”): **Mais informações → Executar assim mesmo** (o exe ainda não é assinado digitalmente)
+3. Instale e abra **SmartGuard AI**
+4. Aguarde o splash subir a API (porta `8080`) e o Vision (porta `8090`)
+5. No **primeiro acesso**, cadastre o administrador deste PC (e-mail + senha)
+6. Não use login demo antigo (`admin@…` / `admin123`) — o Setup atual começa **sem usuários**
+
+Release atual: [v1.2.8](https://github.com/g-nat4n/Sistena-de-seguran-a/releases) (ou a tag mais recente).
 
 ## Arquitetura (local independente)
 
-**Cada PC = uma instalação completa:**
-
 | Neste PC | O que existe |
 |----------|--------------|
-| App Electron | Interface + login |
-| API local | Sobe junto com o app (porta 8080) |
-| Banco SQLite+SQLCipher | `%ProgramData%\SmartGuard\data\seguranca_inteligente.db` |
-| Usuários | Só deste PC (não compartilha com outro computador) |
+| App Electron | Interface + login + notificações |
+| API local | Sobe junto com o app (`127.0.0.1:8080`) |
+| Vision | RTSP / saúde em `127.0.0.1:8090` |
+| Banco SQLCipher | `%ProgramData%\SmartGuard\instances\{id}\data\seguranca_inteligente.db` |
+| Usuários | Só desta instalação |
 
 Não há sincronização automática entre PCs. Instalar em outro computador cria **outro banco** e **outros logins**.
 
-## Pré-requisitos
+## Pré-requisitos (PC do cliente)
 
 - Windows 10/11
-- Java 21 (JRE) no PATH **ou** JRE embutido em `windows/runtime/jre`
-- (Servidor) privilégio de Administrador para registrar serviços
+- **Não** precisa instalar Java nem Python (vêm no Setup)
+- Portas livres: `8080` e `8090` (loopback; firewall de LAN normalmente não é necessário)
 
-## 1) Empacotar API
+## O que o Setup inclui
+
+- JRE Temurin 21
+- `smartguard-api.jar`
+- Pacote Vision + Python embutido
+- Interface (renderer) + toast de alerta + centro de notificações (sino)
+
+## Notificações
+
+- Toast flutuante no canto do Windows (estilo SmartGuard, com **ATENÇÃO**)
+- Dentro do app: ícone de **sino** no topo (lista estilo Facebook)
+- Central de Alertas: tela completa de eventos
+
+## Backup e restauração
+
+- Pela UI: **Status do servidor** → Backup agora (ADMIN)
+- Arquivos sob `%ProgramData%\SmartGuard\instances\{id}\data\`
+- O arquivo do banco já é SQLCipher (criptografado)
+
+## Atualização
+
+1. Feche o SmartGuard AI
+2. Instale a nova versão do `SmartGuard-AI-Setup.exe` por cima
+3. Dados em `ProgramData\SmartGuard\instances\…` **permanecem**
+
+## Encerrar
+
+- Com o padrão atual (`keepApiOnExit: false`), fechar o app **encerra** API e Vision iniciados por ele
+- Só uma instância do app fica aberta (segunda abertura foca a janela existente)
+
+## Gerar o instalador (desenvolvimento)
 
 ```powershell
 .\windows\scripts\package-api.ps1
-```
 
-Gera `windows\dist\api\smartguard-api.jar`.
-
-## 2) Instalar serviços (PC principal)
-
-PowerShell **como Administrador**:
-
-```powershell
-.\windows\scripts\install-services.ps1
-```
-
-- Auto-start com o Windows
-- Restart automático em falha
-- Logs: `%ProgramData%\SmartGuard\logs`
-
-## 3) App Electron / instalador
-
-```powershell
 cd frontend
 npm ci
-npm run build
-# copiar dist → desktop/renderer
+npm run build:electron
+
 cd ..\desktop
 Remove-Item -Recurse -Force renderer -ErrorAction SilentlyContinue
 Copy-Item -Recurse ..\frontend\dist renderer
@@ -55,72 +78,25 @@ npm ci
 npm run dist
 ```
 
-Instalador gerado: `desktop\dist\SmartGuard-Setup-1.0.0.exe`
+Saída: `desktop\dist\SmartGuard-AI-Setup.exe`
 
-- Cria atalho na Área de Trabalho e Menu Iniciar
-- Abre splash → verifica API → login
+## Serviços Windows (opcional / legado)
 
-## 4) Configurar cliente
+Os scripts `install-services.ps1` / WinSW ainda existem para cenários avançados.  
+No fluxo recomendado do Setup, **não são obrigatórios** — o Electron sobe API e Vision sozinho.
 
-No app: **Configuração do app** (`/app-setup`) ou editar `%AppData%\smartguard-desktop\config.json`:
+## Checklist de testes (outro PC)
 
-```json
-{
-  "mode": "client",
-  "apiHost": "192.168.1.10",
-  "apiPort": 8080,
-  "useHttps": false
-}
-```
-
-Libere a porta 8080 no Firewall do Windows **somente na rede privada**.
-
-## Login demo
-
-`admin@smartguard.local` / `admin123`
-
-## Backup e restauração
-
-- Pela UI: **Status do servidor** → Backup agora (ADMIN)
-- Arquivos em `%ProgramData%\SmartGuard\data\backups\`
-- Restore: `POST /api/admin/restore` (multipart) ou substituir o `.db` com o serviço parado
-- O arquivo do banco já é SQLCipher (criptografado)
-
-## Atualização
-
-1. Parar serviços (`sc stop SmartGuardApi`)
-2. Substituir `smartguard-api.jar` e o app Electron
-3. Iniciar serviços
-4. Dados em `ProgramData` **permanecem**
-
-## Encerrar com segurança
-
-- Fechar o Electron **não** para o monitoramento (serviços continuam)
-- Para manutenção: `sc stop SmartGuardVision` depois `sc stop SmartGuardApi`
-
-## HTTPS na LAN (opcional)
-
-```powershell
-.\windows\scripts\generate-https-cert.ps1
-```
-
-Configure as variáveis SSL no XML do WinSW / ambiente do serviço. Distribua confiança do certificado nos clientes.
-
-## Checklist de testes
-
-1. Ligar o PC principal → serviço sobe sozinho  
-2. Fechar Electron → monitoramento/API seguem  
-3. Desligar um cliente → demais ok  
-4. Desconectar servidor da rede → banner “Servidor desconectado” nos clientes  
-5. Reconectar → banner de restabelecido  
-6. Reiniciar Windows → auto-start  
-7. Matar processo da API → WinSW reinicia  
-8. Backup/restore → dados íntegros  
+1. Instalar `SmartGuard-AI-Setup.exe` em Windows limpo  
+2. Passar pelo SmartScreen se aparecer  
+3. Splash → API/Vision UP  
+4. Cadastrar primeiro admin e entrar  
+5. Cadastrar câmera RTSP (se houver)  
+6. Ver toast + sino de notificação  
+7. Fechar e reabrir o app → mesma instalação / mesmos usuários  
+8. Desinstalar → dados em `ProgramData` podem permanecer (backup seguro)
 
 ## Desinstalação
 
-```powershell
-.\windows\scripts\uninstall-services.ps1
-```
-
-Dados em `%ProgramData%\SmartGuard` não são apagados automaticamente (backup seguro).
+Desinstale pelo Painel do Windows / atalho do instalador.  
+Pastas em `%ProgramData%\SmartGuard` **não** são apagadas automaticamente.

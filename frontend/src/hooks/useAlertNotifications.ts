@@ -29,7 +29,7 @@ function writeSeenIds(ids: Set<number>) {
 function alertTitle(alert: AlertItem): string {
   const priority =
     alert.priority === 'CRITICAL' || alert.priority === 'HIGH' ? '🚨 ' : '🔔 '
-  return `${priority}SmartGuard · ${alert.typeLabel || 'Novo alerta'}`
+  return `${priority}ATENÇÃO · ${alert.typeLabel || 'Novo alerta'}`
 }
 
 function alertBody(alert: AlertItem): string {

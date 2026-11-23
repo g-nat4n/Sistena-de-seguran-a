@@ -1,6 +1,6 @@
 {
   "name": "smartguard-desktop",
-  "version": "1.2.6",
+  "version": "1.2.8",
   "description": "SmartGuard AI — aplicativo Windows",
   "main": "src/main.js",
   "author": "SmartGuard",
@@ -20,6 +20,7 @@
     "files": [
       "src/**/*",
       "splash/**/*",
+      "toast/**/*",
       "renderer/**/*",
       "assets/**/*",
       "config.example.json"

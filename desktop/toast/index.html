@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartGuard Alerta</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Syne:wght@700;800&display=swap');
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        font-family: Manrope, system-ui, sans-serif;
+        user-select: none;
+        -webkit-app-region: drag;
+      }
+      .wrap {
+        height: 100%;
+        padding: 12px 12px 18px;
+        display: flex;
+        align-items: stretch;
+      }
+      .card {
+        flex: 1;
+        padding: 16px 16px 18px 14px;
+        border-radius: 16px;
+        color: #f8fafc;
+        background:
+          linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(15, 23, 42, 0.18) 40%),
+          linear-gradient(180deg, #151e30 0%, #0f172a 100%);
+        border: 3px solid #ef4444;
+        outline: 1px solid rgba(239, 68, 68, 0.35);
+        outline-offset: 0;
+        box-shadow:
+          0 18px 40px rgba(0, 0, 0, 0.5),
+          0 0 28px rgba(239, 68, 68, 0.28),
+          inset 0 0 0 1px rgba(248, 113, 113, 0.25);
+        display: grid;
+        grid-template-columns: 52px 1fr auto;
+        gap: 12px;
+        align-items: start;
+        animation: slideIn 220ms ease-out;
+        cursor: pointer;
+        -webkit-app-region: no-drag;
+      }
+      .card:hover { border-color: #f87171; }
+      .badge {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: rgba(239, 68, 68, 0.18);
+        border: 2px solid rgba(239, 68, 68, 0.75);
+        color: #ef4444;
+        font-size: 22px;
+      }
+      .attention {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(239, 68, 68, 0.45), rgba(239, 68, 68, 0.18));
+        border: 1.5px solid rgba(248, 113, 113, 0.9);
+        color: #fff1f2;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-family: Syne, Manrope, sans-serif;
+        text-shadow: 0 1px 0 rgba(127, 29, 29, 0.55);
+        box-shadow: 0 0 18px rgba(239, 68, 68, 0.28);
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #ef4444;
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        animation: pulse 1.2s infinite;
+      }
+      h1 {
+        font-family: Syne, Manrope, sans-serif;
+        font-size: 15px;
+        font-weight: 800;
+        line-height: 1.25;
+        margin-bottom: 4px;
+      }
+      p {
+        color: #94a3b8;
+        font-size: 12.5px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+      .brand {
+        margin-top: 10px;
+        color: #3b82f6;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .close {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: 1px solid #263449;
+        background: rgba(15, 23, 42, 0.7);
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+      }
+      .close:hover { color: #f8fafc; border-color: #ef4444; }
+      .bar {
+        grid-column: 1 / -1;
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(38, 52, 73, 0.9);
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      .bar > span {
+        display: block;
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #ef4444, #3b82f6);
+        transform-origin: left;
+        animation: shrink 8s linear forwards;
+      }
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(16px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.65); }
+        70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+      }
+      @keyframes shrink {
+        from { transform: scaleX(1); }
+        to { transform: scaleX(0); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card" id="card">
+        <div class="badge">⚠</div>
+        <div>
+          <div class="attention"><span class="dot"></span> Atenção</div>
+          <h1 id="title">Alerta SmartGuard</h1>
+          <p id="body">Novo evento para revisão.</p>
+          <div class="brand">SmartGuard AI</div>
+        </div>
+        <button class="close" id="close" title="Fechar">×</button>
+        <div class="bar"><span></span></div>
+      </div>
+    </div>
+    <script>
+      const params = new URLSearchParams(location.search)
+      const title = params.get('title') || 'Alerta SmartGuard'
+      const body = params.get('body') || 'Novo evento para revisão.'
+      const alertId = params.get('alertId') || ''
+      document.getElementById('title').textContent = title.replace(/^🚨\s*/, '')
+      document.getElementById('body').textContent = body
+
+      const { ipcRenderer } = require('electron')
+      function dismiss(open) {
+        ipcRenderer.send('toast-dismiss', { open: Boolean(open), alertId })
+      }
+      document.getElementById('close').onclick = (e) => {
+        e.stopPropagation()
+        dismiss(false)
+      }
+      document.getElementById('card').onclick = () => dismiss(true)
+      setTimeout(() => dismiss(false), 8000)
+    </script>
+  </body>
+</html>

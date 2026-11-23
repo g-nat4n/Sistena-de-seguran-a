@@ -9,4 +9,9 @@ contextBridge.exposeInMainWorld('smartguardDesktop', {
   onConfig: (cb) => ipcRenderer.on('smartguard-config', (_e, data) => cb(data)),
   onNotificationClick: (cb) =>
     ipcRenderer.on('notification-clicked', (_e, data) => cb(data)),
+  onInAppNotification: (cb) => {
+    const handler = (_e, data) => cb(data)
+    ipcRenderer.on('in-app-notification', handler)
+    return () => ipcRenderer.removeListener('in-app-notification', handler)
+  },
 })

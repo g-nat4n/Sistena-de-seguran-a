@@ -1,5 +1,6 @@
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
+import { InAppAlertToast } from './components/system/InAppAlertToast'
 import { AuthProvider } from './contexts/AuthContext'
 import { AppLayout } from './layouts/AppLayout'
 import { AlertsPage } from './pages/AlertsPage'
@@ -42,6 +43,7 @@ export default function App() {
             </Route>
           </Route>
         </Routes>
+        <InAppAlertToast />
       </Router>
     </AuthProvider>
   )

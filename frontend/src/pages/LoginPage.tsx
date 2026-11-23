@@ -50,7 +50,8 @@ export function LoginPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await login(email, password)
+      const cleanEmail = email.trim().toLowerCase()
+      await login(cleanEmail, password)
       const redirectTo = (location.state as { from?: string } | null)?.from ?? '/'
       navigate(redirectTo, { replace: true })
     } catch (err) {
@@ -73,7 +74,8 @@ export function LoginPage() {
         setTab('login')
         throw new Error('Já existe administrador neste PC. Use a aba Entrar.')
       }
-      await register({ name, email, password })
+      const cleanEmail = email.trim().toLowerCase()
+      await register({ name: name.trim(), email: cleanEmail, password })
       navigate('/', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha no cadastro')
@@ -138,9 +140,11 @@ export function LoginPage() {
             <TextField
               label="Senha"
               type="password"
+              revealable
               value={password}
               required
               placeholder="Sua senha de acesso"
+              autoComplete="current-password"
               onChange={setPassword}
             />
             {error ? <p className="text-sm text-sg-red">{error}</p> : null}
@@ -207,18 +211,22 @@ export function LoginPage() {
             <TextField
               label="Senha"
               type="password"
+              revealable
               value={password}
               required
               placeholder="Crie uma senha"
               hint="Guarde esta senha: é o login deste PC."
+              autoComplete="new-password"
               onChange={setPassword}
             />
             <TextField
               label="Confirmar senha"
               type="password"
+              revealable
               value={confirmPassword}
               required
               placeholder="Digite a senha novamente"
+              autoComplete="new-password"
               onChange={setConfirmPassword}
             />
             {error ? <p className="text-sm text-sg-red">{error}</p> : null}

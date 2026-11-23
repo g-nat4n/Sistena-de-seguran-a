@@ -1,3 +1,6 @@
+import { emitInAppAlertToast } from '../components/system/InAppAlertToast'
+import { addNotification } from './notificationStore'
+
 export type DesktopNotifyPayload = {
   title: string
   body: string
@@ -13,6 +16,22 @@ function desktopBridge(): DesktopBridge | undefined {
   return (window as unknown as { smartguardDesktop?: DesktopBridge }).smartguardDesktop
 }
 
+function mirrorInApp(payload: DesktopNotifyPayload) {
+  emitInAppAlertToast({
+    title: payload.title,
+    body: payload.body,
+    alertId: payload.alertId,
+  })
+  // No desktop: grava no centro aqui. Com desktop, o main devolve via IPC.
+  if (!desktopBridge()?.showNotification) {
+    addNotification({
+      title: payload.title,
+      body: payload.body,
+      alertId: payload.alertId,
+    })
+  }
+}
+
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (desktopBridge()?.showNotification) return true
   if (typeof window === 'undefined' || !('Notification' in window)) return false
@@ -23,6 +42,8 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 }
 
 export async function showAlertNotification(payload: DesktopNotifyPayload): Promise<void> {
+  mirrorInApp(payload)
+
   const desktop = desktopBridge()
   if (desktop?.showNotification) {
     await desktop.showNotification(payload)

@@ -7,11 +7,86 @@ const { loadConfig, saveConfig, dataDir, logsDir, instanceRoot, legacyDataDir } 
 
 let splashWindow = null
 let mainWindow = null
+let toastWindow = null
 let localApiProcess = null
 let localVisionProcess = null
 let config = null
 let startedApiByApp = false
 let startedVisionByApp = false
+
+// Evita duas janelas brigando pelas portas 8080/8090
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+}
+
+function focusMainWindow(alertId) {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+  if (alertId) {
+    mainWindow.webContents.send('notification-clicked', { alertId: String(alertId) })
+  }
+}
+
+function closeToastWindow() {
+  if (toastWindow && !toastWindow.isDestroyed()) {
+    toastWindow.close()
+  }
+  toastWindow = null
+}
+
+function showStyledToast({ title, body, alertId }) {
+  closeToastWindow()
+
+  const toastPath = path.join(__dirname, '..', 'toast', 'index.html')
+  if (!fs.existsSync(toastPath)) {
+    return false
+  }
+
+  const { width: screenW = 1280, height: screenH = 720 } =
+    require('electron').screen.getPrimaryDisplay().workAreaSize
+  const winW = 430
+  const winH = 210
+  const margin = 16
+
+  toastWindow = new BrowserWindow({
+    width: winW,
+    height: winH,
+    x: Math.max(0, screenW - winW - margin),
+    y: Math.max(0, screenH - winH - margin),
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    focusable: true,
+    show: false,
+    hasShadow: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  })
+
+  toastWindow.loadFile(toastPath, {
+    query: {
+      title: String(title || 'SmartGuard AI'),
+      body: String(body || ''),
+      alertId: alertId != null ? String(alertId) : '',
+    },
+  })
+  toastWindow.once('ready-to-show', () => {
+    if (toastWindow && !toastWindow.isDestroyed()) toastWindow.showInactive()
+  })
+  toastWindow.on('closed', () => {
+    toastWindow = null
+  })
+  return true
+}
 
 function createSplash() {
   splashWindow = new BrowserWindow({
@@ -494,49 +569,91 @@ ipcMain.handle('reset-local-data', async () => {
   return { ok: true, dataDir: dataDir() }
 })
 
-ipcMain.handle('show-notification', async (_e, payload = {}) => {
-  if (!Notification.isSupported()) {
-    return { ok: false, reason: 'unsupported' }
+ipcMain.on('toast-dismiss', (_e, payload = {}) => {
+  const alertId = payload.alertId != null ? String(payload.alertId) : ''
+  const open = Boolean(payload.open)
+  closeToastWindow()
+  if (open) focusMainWindow(alertId)
+})
+
+function pushInAppNotification({ title, body, alertId }) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('in-app-notification', {
+      title: String(title || 'ATENÇÃO · SmartGuard'),
+      body: String(body || ''),
+      alertId: alertId != null ? String(alertId) : '',
+    })
   }
-  const title = String(payload.title || 'SmartGuard AI')
+}
+
+ipcMain.handle('show-notification', async (_e, payload = {}) => {
+  const title = String(payload.title || 'ATENÇÃO · SmartGuard')
   const body = String(payload.body || '')
   const alertId = payload.alertId != null ? String(payload.alertId) : ''
 
-  const iconCandidates = [
-    path.join(__dirname, '..', 'assets', 'icon.png'),
-    path.join(process.resourcesPath || '', 'assets', 'icon.png'),
-  ]
-  const iconPath = iconCandidates.find((p) => fs.existsSync(p))
-  const note = new Notification({
-    title,
-    body,
-    icon: iconPath ? nativeImage.createFromPath(iconPath) : undefined,
-    silent: false,
-    urgency: 'critical',
+  const styled = showStyledToast({ title, body, alertId })
+  pushInAppNotification({ title, body, alertId })
+
+  // Fallback nativo (bandeja) se a janela custom falhar
+  if (!styled && Notification.isSupported()) {
+    const iconCandidates = [
+      path.join(__dirname, '..', 'assets', 'icon.png'),
+      path.join(process.resourcesPath || '', 'assets', 'icon.png'),
+    ]
+    const iconPath = iconCandidates.find((p) => fs.existsSync(p))
+    const note = new Notification({
+      title,
+      body,
+      icon: iconPath ? nativeImage.createFromPath(iconPath) : undefined,
+      silent: false,
+      urgency: 'critical',
+    })
+    note.on('click', () => focusMainWindow(alertId))
+    note.show()
+  }
+
+  return { ok: true, styled }
+})
+
+if (gotTheLock) {
+  app.on('second-instance', () => {
+    focusMainWindow()
   })
-  note.on('click', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.show()
-      mainWindow.focus()
-      mainWindow.webContents.send('notification-clicked', { alertId })
+
+  app.whenReady().then(() => {
+    // Remove barra File/Edit/View/Window/Help
+    Menu.setApplicationMenu(null)
+    boot()
+
+    // Hook local de teste (só em desenvolvimento / electron .)
+    if (!app.isPackaged) {
+      const testHook = http.createServer((req, res) => {
+        if (req.method === 'POST' && req.url === '/__test_notify') {
+          const title = 'ATENÇÃO · Movimento suspeito'
+          const body = 'Se você está vendo isto, a notificação estilizada está OK.\nCâmera: Entrada'
+          showStyledToast({ title, body, alertId: 'test' })
+          pushInAppNotification({ title, body, alertId: 'test' })
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            if (mainWindow.isMinimized()) mainWindow.restore()
+            mainWindow.show()
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: true }))
+          return
+        }
+        res.writeHead(404)
+        res.end()
+      })
+      testHook.listen(19876, '127.0.0.1')
     }
   })
-  note.show()
-  return { ok: true }
-})
 
-app.whenReady().then(() => {
-  // Remove barra File/Edit/View/Window/Help
-  Menu.setApplicationMenu(null)
-  boot()
-})
+  app.on('window-all-closed', () => {
+    stopOwnedProcesses()
+    if (process.platform !== 'darwin') app.quit()
+  })
 
-app.on('window-all-closed', () => {
-  stopOwnedProcesses()
-  if (process.platform !== 'darwin') app.quit()
-})
-
-app.on('before-quit', () => {
-  stopOwnedProcesses()
-})
+  app.on('before-quit', () => {
+    stopOwnedProcesses()
+  })
+}

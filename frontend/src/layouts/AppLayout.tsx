@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { ConnectionBanner } from '../components/system/ConnectionBanner'
+import { NotificationCenter } from '../components/system/NotificationCenter'
 import { useAuth } from '../contexts/AuthContext'
 import { useAlertNotifications } from '../hooks/useAlertNotifications'
 
@@ -108,6 +109,7 @@ export function AppLayout() {
             Sistema local em operação
           </div>
           <div className="ml-auto flex items-center gap-3">
+            <NotificationCenter />
             <div className="text-right">
               <p className="text-sm font-medium text-sg-text">{user?.name ?? 'Operação'}</p>
               <p className="text-xs text-sg-muted">{user?.roles?.join(', ') ?? 'Demo'}</p>
