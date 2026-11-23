@@ -1,6 +1,6 @@
 {
   "name": "smartguard-desktop",
-  "version": "1.0.0",
+  "version": "1.2.2",
   "description": "SmartGuard AI — aplicativo Windows",
   "main": "src/main.js",
   "author": "SmartGuard",
@@ -31,6 +31,16 @@
         "filter": ["**/*"]
       },
       {
+        "from": "../windows/dist/vision",
+        "to": "vision",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../windows/dist/runtime/jre",
+        "to": "runtime/jre",
+        "filter": ["**/*"]
+      },
+      {
         "from": "../windows",
         "to": "windows",
         "filter": ["*.xml", "scripts/**/*"]
@@ -39,7 +49,7 @@
     "win": {
       "target": ["nsis"],
       "icon": "assets/icon.ico",
-      "artifactName": "SmartGuard-Setup-${version}.${ext}"
+      "artifactName": "SmartGuard-AI-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,

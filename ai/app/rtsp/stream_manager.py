@@ -23,9 +23,6 @@ from app.config import (
     YOLO_MODEL,
     YOLO_POSE_MODEL,
 )
-from app.detection.centroid_tracker import CentroidTracker
-from app.detection.event_engine import EventEngine
-from app.detection.pose_detector import PosePersonDetector
 from app.rtsp.connection import mask_rtsp_url, probe_rtsp
 
 logger = logging.getLogger("smartguard.rtsp")
@@ -44,12 +41,26 @@ class StreamManager:
     def __init__(self) -> None:
         self._streams: Dict[int, StreamHandle] = {}
         self._lock = threading.Lock()
-        self._detector: PosePersonDetector | None = None
-        self._event_engine = EventEngine()
+        self._detector = None
+        self._detector_cls = None
+        self._event_engine = None
+        self._tracker_cls = None
 
-    def _get_detector(self) -> PosePersonDetector:
+    def _ensure_detection(self) -> None:
+        if self._event_engine is not None:
+            return
+        from app.detection.centroid_tracker import CentroidTracker
+        from app.detection.event_engine import EventEngine
+        from app.detection.pose_detector import PosePersonDetector
+
+        self._tracker_cls = CentroidTracker
+        self._event_engine = EventEngine()
+        self._detector_cls = PosePersonDetector
+
+    def _get_detector(self):
+        self._ensure_detection()
         if self._detector is None:
-            self._detector = PosePersonDetector(
+            self._detector = self._detector_cls(
                 confidence=YOLO_CONFIDENCE,
                 pose_model=YOLO_POSE_MODEL,
                 box_model=YOLO_MODEL,
@@ -114,7 +125,10 @@ class StreamManager:
     def _run_loop(self, handle: StreamHandle) -> None:
         camera_id = handle.camera_id
         consecutive_failures = 0
-        tracker = CentroidTracker()
+        tracker = None
+        if DETECTION_ENABLED:
+            self._ensure_detection()
+            tracker = self._tracker_cls()
         frame_index = 0
 
         while not handle.stop_event.is_set():
@@ -141,7 +155,7 @@ class StreamManager:
                         last_heartbeat = now
 
                     frame_index += 1
-                    if DETECTION_ENABLED and frame_index % DETECTION_EVERY_N_FRAMES == 0:
+                    if DETECTION_ENABLED and tracker is not None and frame_index % DETECTION_EVERY_N_FRAMES == 0:
                         detections = self._get_detector().detect(frame)
                         tracks = tracker.update(detections)
                         if tracks:

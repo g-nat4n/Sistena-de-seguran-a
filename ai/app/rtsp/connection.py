@@ -31,14 +31,22 @@ def probe_rtsp(rtsp_url: str, open_timeout: float = 8.0, read_timeout: float = 5
     capture = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
     if not capture.isOpened():
         capture.release()
-        return RtspProbeResult(False, "Não foi possível abrir o stream RTSP")
+        return RtspProbeResult(
+            False,
+            "Não foi possível abrir o RTSP. Confira IP, porta, path, usuário e senha "
+            "e se a câmera está na mesma rede.",
+        )
 
     capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     ok, frame = capture.read()
     capture.release()
 
     if not ok or frame is None:
-        return RtspProbeResult(False, "Stream aberto, mas nenhum frame foi lido")
+        return RtspProbeResult(
+            False,
+            "Conectou no equipamento, mas não leu imagem. Confira o path/canal "
+            "(channel/subtype) e se o RTSP está liberado na câmera.",
+        )
 
     height, width = frame.shape[:2]
     return RtspProbeResult(True, f"Conexão OK — frame {width}x{height}")

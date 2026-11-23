@@ -42,6 +42,9 @@ runs/
 # Desktop local data / packaging
 data-desktop-test/
 windows/dist/
+releases/*.exe
+releases/*.exe.blockmap
+
 windows/winsw/*.exe
 windows/SmartGuardApi.exe
 windows/SmartGuardVision.exe

@@ -8,8 +8,10 @@ const { loadConfig, saveConfig, dataDir, logsDir } = require('./config')
 let splashWindow = null
 let mainWindow = null
 let localApiProcess = null
+let localVisionProcess = null
 let config = null
 let startedApiByApp = false
+let startedVisionByApp = false
 
 function createSplash() {
   splashWindow = new BrowserWindow({
@@ -56,7 +58,28 @@ function healthCheck(baseUrl, timeoutMs = 2500) {
   })
 }
 
+function visionHealthCheck(timeoutMs = 2500) {
+  return new Promise((resolve) => {
+    try {
+      const req = http.get('http://127.0.0.1:8090/health', { timeout: timeoutMs }, (res) => {
+        resolve(res.statusCode === 200)
+        res.resume()
+      })
+      req.on('timeout', () => { req.destroy(); resolve(false) })
+      req.on('error', () => resolve(false))
+    } catch {
+      resolve(false)
+    }
+  })
+}
+
 function resolveJava() {
+  const bundled = [
+    path.join(process.resourcesPath || '', 'runtime', 'jre', 'bin', 'java.exe'),
+    path.join(__dirname, '..', '..', 'windows', 'dist', 'runtime', 'jre', 'bin', 'java.exe'),
+  ].find((p) => fs.existsSync(p))
+  if (bundled) return bundled
+
   const which = spawnSync('where', ['java'], { encoding: 'utf8', shell: true })
   if (which.status === 0) {
     const first = which.stdout.split(/\r?\n/).map((s) => s.trim()).find(Boolean)
@@ -68,7 +91,6 @@ function resolveJava() {
     if (fs.existsSync(candidate)) return candidate
   }
   const extras = [
-    path.join(process.resourcesPath || '', 'runtime', 'jre', 'bin', 'java.exe'),
     'C:\\Program Files\\Eclipse Adoptium\\jdk-21\\bin\\java.exe',
     'C:\\Program Files\\Java\\jdk-21\\bin\\java.exe',
     'C:\\Program Files\\Microsoft\\jdk-21\\bin\\java.exe',
@@ -85,6 +107,49 @@ function resolveApiJar() {
   return candidates.find((p) => fs.existsSync(p)) || null
 }
 
+function resolveVisionRoot() {
+  const candidates = [
+    path.join(process.resourcesPath || '', 'vision'),
+    path.join(__dirname, '..', '..', 'windows', 'dist', 'vision'),
+    path.join(__dirname, '..', '..', 'ai'),
+  ]
+  return candidates.find((p) => fs.existsSync(path.join(p, 'app', 'main.py'))) || null
+}
+
+function resolveBundledPython(visionRoot) {
+  if (!visionRoot) return null
+  const candidates = [
+    path.join(visionRoot, 'python', 'python.exe'),
+    path.join(visionRoot, 'python', 'Scripts', 'python.exe'),
+  ]
+  return candidates.find((p) => fs.existsSync(p)) || null
+}
+
+function resolveSystemPython() {
+  const tries = [
+    ['py', ['-3', '-c', 'import sys; print(sys.executable)']],
+    ['python', ['-c', 'import sys; print(sys.executable)']],
+    ['python3', ['-c', 'import sys; print(sys.executable)']],
+  ]
+  for (const [cmd, args] of tries) {
+    const r = spawnSync(cmd, args, { encoding: 'utf8', shell: true })
+    if (r.status === 0) {
+      const exe = (r.stdout || '').trim().split(/\r?\n/).filter(Boolean).pop()
+      if (exe && fs.existsSync(exe)) return exe
+    }
+  }
+  return null
+}
+
+function pythonHasModule(pythonExe, moduleName) {
+  const r = spawnSync(pythonExe, ['-c', `import ${moduleName}`], {
+    encoding: 'utf8',
+    shell: false,
+    windowsHide: true,
+  })
+  return r.status === 0
+}
+
 function appendLog(file, text) {
   try {
     fs.mkdirSync(path.dirname(file), { recursive: true })
@@ -92,6 +157,125 @@ function appendLog(file, text) {
   } catch {
     // ignore
   }
+}
+
+function runSync(cmd, args, opts = {}) {
+  return spawnSync(cmd, args, {
+    encoding: 'utf8',
+    shell: true,
+    windowsHide: true,
+    ...opts,
+  })
+}
+
+async function ensureVision() {
+  const logs = logsDir()
+  const logFile = path.join(logs, 'vision-launcher.log')
+
+  if (await visionHealthCheck()) {
+    sendSplash('splash-status', 'Vision (câmeras) já está no ar')
+    return true
+  }
+
+  const visionRoot = resolveVisionRoot()
+  if (!visionRoot) {
+    sendSplash('splash-status', 'Pacote Vision ausente — RTSP pode falhar')
+    appendLog(logFile, 'Vision root não encontrado\n')
+    return false
+  }
+
+  let visionPython = resolveBundledPython(visionRoot)
+  if (visionPython && !pythonHasModule(visionPython, 'uvicorn')) {
+    appendLog(logFile, 'Python embutido sem uvicorn — tentando fallback\n')
+    visionPython = null
+  }
+
+  if (!visionPython) {
+    const systemPython = resolveSystemPython()
+    if (!systemPython) {
+      sendSplash(
+        'splash-status',
+        'Python do pacote ausente. Reinstale o SmartGuard-AI-Setup.exe completo.'
+      )
+      appendLog(logFile, 'Python não encontrado\n')
+      return false
+    }
+
+    const venvDir = path.join(process.env.ProgramData || dataDir(), 'SmartGuard', 'vision-venv')
+    visionPython = path.join(venvDir, 'Scripts', 'python.exe')
+    const marker = path.join(venvDir, '.deps-rtsp-ok')
+    const reqFile = path.join(visionRoot, 'requirements-rtsp.txt')
+
+    if (!fs.existsSync(visionPython)) {
+      sendSplash('splash-status', 'Preparando ambiente Vision (1ª vez)…')
+      appendLog(logFile, `\n==== ${new Date().toISOString()} criando venv ====\n`)
+      const created = runSync(systemPython, ['-m', 'venv', venvDir])
+      if (created.status !== 0) {
+        appendLog(logFile, created.stderr || created.stdout || 'falha venv\n')
+        sendSplash('splash-status', 'Não foi possível criar o ambiente Vision')
+        return false
+      }
+    }
+
+    if (!fs.existsSync(marker) && fs.existsSync(reqFile)) {
+      sendSplash('splash-status', 'Instalando suporte RTSP (pode demorar alguns minutos)…')
+      appendLog(logFile, `\n==== ${new Date().toISOString()} pip install ====\n`)
+      const pip = runSync(visionPython, ['-m', 'pip', 'install', '--upgrade', 'pip'], { timeout: 180000 })
+      appendLog(logFile, (pip.stdout || '') + (pip.stderr || ''))
+      const deps = runSync(visionPython, ['-m', 'pip', 'install', '-r', reqFile], { timeout: 600000 })
+      appendLog(logFile, (deps.stdout || '') + (deps.stderr || ''))
+      if (deps.status !== 0) {
+        sendSplash('splash-status', 'Falha ao instalar dependências Vision — veja o log')
+        return false
+      }
+      fs.writeFileSync(marker, new Date().toISOString(), 'utf8')
+    }
+  }
+
+  sendSplash('splash-status', 'Iniciando Vision (porta 8090)…')
+  appendLog(logFile, `\n==== ${new Date().toISOString()} starting Vision ====\n`)
+
+  const evidenceDir = path.join(dataDir(), 'evidence')
+  fs.mkdirSync(evidenceDir, { recursive: true })
+
+  localVisionProcess = spawn(
+    visionPython,
+    ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8090'],
+    {
+      cwd: visionRoot,
+      env: {
+        ...process.env,
+        SMARTGUARD_API_URL: 'http://127.0.0.1:8080/api',
+        VISION_SERVICE_TOKEN: 'smartguard-vision-dev-token',
+        VISION_PUBLIC_BASE_URL: 'http://127.0.0.1:8090',
+        DETECTION_ENABLED: 'false',
+        EVIDENCE_DIR: evidenceDir,
+      },
+      detached: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }
+  )
+  startedVisionByApp = true
+
+  localVisionProcess.stdout.on('data', (buf) => appendLog(logFile, buf.toString()))
+  localVisionProcess.stderr.on('data', (buf) => appendLog(logFile, buf.toString()))
+  localVisionProcess.on('exit', (code) => {
+    appendLog(logFile, `\nVision exit code=${code}\n`)
+    localVisionProcess = null
+  })
+
+  for (let i = 0; i < 40; i++) {
+    sendSplash('splash-status', `Aguardando Vision… (${i + 1}/40)`)
+    await new Promise((r) => setTimeout(r, 1000))
+    if (await visionHealthCheck()) {
+      sendSplash('splash-status', 'Vision pronto para câmeras RTSP')
+      return true
+    }
+    if (!localVisionProcess) break
+  }
+
+  sendSplash('splash-status', `Vision não subiu. Log: ${logFile}`)
+  return false
 }
 
 async function ensureLocalStack() {
@@ -104,75 +288,82 @@ async function ensureLocalStack() {
   sendSplash('splash-status', 'Verificando instalação local deste PC…')
   sendSplash('splash-status', 'Cada PC tem banco e usuários próprios')
 
-  if (await healthCheck(config.apiBaseUrl)) {
+  let apiOk = await healthCheck(config.apiBaseUrl)
+  if (apiOk) {
     sendSplash('splash-status', 'API local já está no ar')
-    return true
-  }
-
-  const java = resolveJava()
-  if (!java) {
-    sendSplash(
-      'splash-error',
-      'Java 21 não encontrado neste PC. Instale o Eclipse Temurin 21 (JRE) e tente novamente.'
-    )
-    return false
-  }
-
-  const jar = resolveApiJar()
-  if (!jar) {
-    sendSplash(
-      'splash-error',
-      'API não encontrada no pacote. Rode windows\\scripts\\package-api.ps1 e gere o instalador de novo.'
-    )
-    return false
-  }
-
-  sendSplash('splash-status', 'Criando/abrindo banco local deste PC…')
-  const logFile = path.join(logs, 'api-launcher.log')
-  appendLog(logFile, `\n==== ${new Date().toISOString()} starting API ====\n`)
-
-  localApiProcess = spawn(java, [
-    '-jar', jar,
-    `--server.port=${config.apiPort}`,
-    '--server.address=127.0.0.1',
-    `--smartguard.data-dir=${dir}`,
-  ], {
-    env: {
-      ...process.env,
-      SPRING_PROFILES_ACTIVE: 'sqlite',
-      SMARTGUARD_NETWORK_MODE: 'standalone',
-      SMARTGUARD_DATA_DIR: dir,
-      SERVER_ADDRESS: '127.0.0.1',
-      SERVER_PORT: String(config.apiPort),
-      CORS_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173,null,app://smartguard',
-    },
-    detached: false,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-  startedApiByApp = true
-
-  localApiProcess.stdout.on('data', (buf) => appendLog(logFile, buf.toString()))
-  localApiProcess.stderr.on('data', (buf) => appendLog(logFile, buf.toString()))
-  localApiProcess.on('exit', (code) => {
-    appendLog(logFile, `\nAPI exit code=${code}\n`)
-    localApiProcess = null
-  })
-
-  for (let i = 0; i < 45; i++) {
-    sendSplash('splash-status', `Preparando banco e login local… (${i + 1}/45)`)
-    await new Promise((r) => setTimeout(r, 1000))
-    if (await healthCheck(config.apiBaseUrl)) {
-      sendSplash('splash-status', 'Banco local pronto')
-      return true
+  } else {
+    const java = resolveJava()
+    if (!java) {
+      sendSplash(
+        'splash-error',
+        'Java embutido não encontrado no pacote. Baixe novamente o SmartGuard-AI-Setup.exe completo.'
+      )
+      return false
     }
-    if (!localApiProcess) break
+
+    const jar = resolveApiJar()
+    if (!jar) {
+      sendSplash(
+        'splash-error',
+        'API não encontrada no pacote. Rode windows\\scripts\\package-api.ps1 e gere o instalador de novo.'
+      )
+      return false
+    }
+
+    sendSplash('splash-status', 'Criando/abrindo banco local deste PC…')
+    const logFile = path.join(logs, 'api-launcher.log')
+    appendLog(logFile, `\n==== ${new Date().toISOString()} starting API ====\n`)
+
+    localApiProcess = spawn(java, [
+      '-jar', jar,
+      `--server.port=${config.apiPort}`,
+      '--server.address=127.0.0.1',
+      `--smartguard.data-dir=${dir}`,
+    ], {
+      env: {
+        ...process.env,
+        SPRING_PROFILES_ACTIVE: 'sqlite',
+        SMARTGUARD_NETWORK_MODE: 'standalone',
+        SMARTGUARD_DATA_DIR: dir,
+        SERVER_ADDRESS: '127.0.0.1',
+        SERVER_PORT: String(config.apiPort),
+        VISION_BASE_URL: 'http://127.0.0.1:8090',
+        CORS_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173,null,app://smartguard',
+      },
+      detached: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    startedApiByApp = true
+
+    localApiProcess.stdout.on('data', (buf) => appendLog(logFile, buf.toString()))
+    localApiProcess.stderr.on('data', (buf) => appendLog(logFile, buf.toString()))
+    localApiProcess.on('exit', (code) => {
+      appendLog(logFile, `\nAPI exit code=${code}\n`)
+      localApiProcess = null
+    })
+
+    for (let i = 0; i < 45; i++) {
+      sendSplash('splash-status', `Preparando banco e login local… (${i + 1}/45)`)
+      await new Promise((r) => setTimeout(r, 1000))
+      if (await healthCheck(config.apiBaseUrl)) {
+        sendSplash('splash-status', 'Banco local pronto')
+        apiOk = true
+        break
+      }
+      if (!localApiProcess) break
+    }
+
+    if (!apiOk) {
+      sendSplash(
+        'splash-error',
+        `A API local não subiu. Veja o log:\n${logFile}`
+      )
+      return false
+    }
   }
 
-  sendSplash(
-    'splash-error',
-    `A API local não subiu. Veja o log:\n${logFile}`
-  )
-  return false
+  await ensureVision()
+  return true
 }
 
 function resolveRendererIndex() {
@@ -231,10 +422,14 @@ async function boot() {
   openMainWindow()
 }
 
-function stopOwnedApi() {
-  if (!startedApiByApp || !localApiProcess || localApiProcess.killed) return
+function stopOwnedProcesses() {
   if (config && config.keepApiOnExit) return
-  localApiProcess.kill()
+  if (startedVisionByApp && localVisionProcess && !localVisionProcess.killed) {
+    try { localVisionProcess.kill() } catch { /* ignore */ }
+  }
+  if (startedApiByApp && localApiProcess && !localApiProcess.killed) {
+    try { localApiProcess.kill() } catch { /* ignore */ }
+  }
 }
 
 ipcMain.on('splash-retry', () => {
@@ -257,10 +452,10 @@ ipcMain.handle('open-data-dir', async () => {
 app.whenReady().then(boot)
 
 app.on('window-all-closed', () => {
-  stopOwnedApi()
+  stopOwnedProcesses()
   if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('before-quit', () => {
-  stopOwnedApi()
+  stopOwnedProcesses()
 })

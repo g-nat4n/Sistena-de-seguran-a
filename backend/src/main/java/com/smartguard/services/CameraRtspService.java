@@ -39,6 +39,19 @@ public class CameraRtspService {
         String path = normalizePath(request.path());
         String username = request.username().trim();
 
+        if (host.isBlank()) {
+            throw new BusinessException("Informe o IP da câmera/DVR (ex.: 192.168.1.50).");
+        }
+        if (looksLikeSerialNotHost(host)) {
+            throw new BusinessException(
+                    "O campo Host deve ser o IP da câmera na rede (ex.: 192.168.1.50), "
+                            + "não o número de série/código RSV. Veja o IP no app ou no roteador."
+            );
+        }
+        if (port < 1 || port > 65535) {
+            throw new BusinessException("Porta RTSP inválida. Na maioria das Intelbras use 554.");
+        }
+
         camera.setRtspHost(host);
         camera.setRtspPort(port);
         camera.setRtspPath(path);
@@ -170,6 +183,15 @@ public class CameraRtspService {
     private String normalizePath(String path) {
         String trimmed = path.trim();
         return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
+    }
+
+    private boolean looksLikeSerialNotHost(String host) {
+        String value = host.trim();
+        if (value.matches("(?i)^RSV\\d+$")) {
+            return true;
+        }
+        // Serial/código sem ponto e sem hífen de hostname típico
+        return !value.contains(".") && !value.contains(":") && value.matches("(?i)^[A-Z]{2,}\\d{6,}$");
     }
 
     private String urlEncode(String value) {

@@ -1,0 +1,20 @@
+SmartGuard AI — Instalação para o cliente
+========================================
+
+Só precisa baixar e instalar o arquivo:
+  SmartGuard-AI-Setup.exe
+
+Não é necessário instalar Java nem Python no PC.
+O instalador já traz o necessário para abrir o sistema e testar câmeras RTSP.
+
+1) Execute SmartGuard-AI-Setup.exe
+2) Abra o atalho "SmartGuard AI"
+3) No primeiro acesso, cadastre o administrador
+4) Câmeras → cadastrar → Monitoramento → Abrir
+5) Preencha RTSP (IP, porta 554, path, usuário e senha da câmera)
+6) Salvar RTSP → Testar conexão → Iniciar stream
+
+Se der erro, a tela mostra o motivo.
+Logs: %ProgramData%\SmartGuard\logs\
+
+Obs.: neste instalador a detecção YOLO fica desligada; serve para conectar e validar as câmeras.
