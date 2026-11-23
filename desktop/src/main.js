@@ -3,7 +3,7 @@ const path = require('path')
 const http = require('http')
 const { spawn, spawnSync } = require('child_process')
 const fs = require('fs')
-const { loadConfig, saveConfig, dataDir, logsDir } = require('./config')
+const { loadConfig, saveConfig, dataDir, logsDir, instanceRoot, legacyDataDir } = require('./config')
 
 let splashWindow = null
 let mainWindow = null
@@ -279,6 +279,26 @@ async function ensureVision() {
   return false
 }
 
+function stopStraySmartGuardProcesses() {
+  // Evita reusar API/Vision de outra instalação ainda rodando na 8080/8090
+  spawnSync(
+    'powershell',
+    [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-Command',
+      "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'smartguard-api\\.jar|uvicorn app\\.main' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+    ],
+    { windowsHide: true, encoding: 'utf8' }
+  )
+}
+
+function rmDirRecursive(target) {
+  if (!target || !fs.existsSync(target)) return
+  fs.rmSync(target, { recursive: true, force: true })
+}
+
 async function ensureLocalStack() {
   config = loadConfig()
   const dir = dataDir()
@@ -286,87 +306,87 @@ async function ensureLocalStack() {
   fs.mkdirSync(dir, { recursive: true })
   fs.mkdirSync(logs, { recursive: true })
 
-  sendSplash('splash-status', 'Verificando instalação local deste PC…')
-  sendSplash('splash-status', 'Cada PC tem banco e usuários próprios')
+  sendSplash('splash-status', 'Preparando instalação isolada deste app…')
+  sendSplash('splash-status', `Instância: ${config.instanceId}`)
 
-  let apiOk = await healthCheck(config.apiBaseUrl)
-  if (apiOk) {
-    sendSplash('splash-status', 'API local já está no ar')
-  } else {
-    const java = resolveJava()
-    if (!java) {
-      sendSplash(
-        'splash-error',
-        'Java embutido não encontrado no pacote. Baixe novamente o SmartGuard-AI-Setup.exe completo.'
-      )
-      return false
+  // Sempre sobe a API desta pasta/instalação (não herda usuários de outro Setup)
+  sendSplash('splash-status', 'Encerrando serviços antigos na porta local…')
+  stopStraySmartGuardProcesses()
+  await new Promise((r) => setTimeout(r, 800))
+
+  const java = resolveJava()
+  if (!java) {
+    sendSplash(
+      'splash-error',
+      'Java embutido não encontrado no pacote. Baixe novamente o SmartGuard-AI-Setup.exe completo.'
+    )
+    return false
+  }
+
+  const jar = resolveApiJar()
+  if (!jar) {
+    sendSplash(
+      'splash-error',
+      'API não encontrada no pacote. Rode windows\\scripts\\package-api.ps1 e gere o instalador de novo.'
+    )
+    return false
+  }
+
+  sendSplash('splash-status', 'Abrindo banco só desta instalação…')
+  const logFile = path.join(logs, 'api-launcher.log')
+  appendLog(logFile, `\n==== ${new Date().toISOString()} starting API instance=${config.instanceId} data=${dir} ====\n`)
+
+  localApiProcess = spawn(java, [
+    '-jar', jar,
+    `--server.port=${config.apiPort}`,
+    '--server.address=127.0.0.1',
+    `--smartguard.data-dir=${dir}`,
+  ], {
+    env: {
+      ...process.env,
+      SPRING_PROFILES_ACTIVE: 'sqlite',
+      SMARTGUARD_NETWORK_MODE: 'standalone',
+      SMARTGUARD_DATA_DIR: dir,
+      SERVER_ADDRESS: '127.0.0.1',
+      SERVER_PORT: String(config.apiPort),
+      VISION_BASE_URL: 'http://127.0.0.1:8090',
+      CORS_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173,null,app://smartguard',
+    },
+    detached: false,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  startedApiByApp = true
+
+  localApiProcess.stdout.on('data', (buf) => appendLog(logFile, buf.toString()))
+  localApiProcess.stderr.on('data', (buf) => appendLog(logFile, buf.toString()))
+  localApiProcess.on('exit', (code) => {
+    appendLog(logFile, `\nAPI exit code=${code}\n`)
+    localApiProcess = null
+  })
+
+  let apiOk = false
+  for (let i = 0; i < 45; i++) {
+    sendSplash('splash-status', `Preparando banco e login local… (${i + 1}/45)`)
+    await new Promise((r) => setTimeout(r, 1000))
+    if (await healthCheck(config.apiBaseUrl)) {
+      sendSplash('splash-status', 'Banco desta instalação pronto')
+      apiOk = true
+      break
     }
+    if (!localApiProcess) break
+  }
 
-    const jar = resolveApiJar()
-    if (!jar) {
-      sendSplash(
-        'splash-error',
-        'API não encontrada no pacote. Rode windows\\scripts\\package-api.ps1 e gere o instalador de novo.'
-      )
-      return false
-    }
-
-    sendSplash('splash-status', 'Criando/abrindo banco local deste PC…')
-    const logFile = path.join(logs, 'api-launcher.log')
-    appendLog(logFile, `\n==== ${new Date().toISOString()} starting API ====\n`)
-
-    localApiProcess = spawn(java, [
-      '-jar', jar,
-      `--server.port=${config.apiPort}`,
-      '--server.address=127.0.0.1',
-      `--smartguard.data-dir=${dir}`,
-    ], {
-      env: {
-        ...process.env,
-        SPRING_PROFILES_ACTIVE: 'sqlite',
-        SMARTGUARD_NETWORK_MODE: 'standalone',
-        SMARTGUARD_DATA_DIR: dir,
-        SERVER_ADDRESS: '127.0.0.1',
-        SERVER_PORT: String(config.apiPort),
-        VISION_BASE_URL: 'http://127.0.0.1:8090',
-        CORS_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173,null,app://smartguard',
-      },
-      detached: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    startedApiByApp = true
-
-    localApiProcess.stdout.on('data', (buf) => appendLog(logFile, buf.toString()))
-    localApiProcess.stderr.on('data', (buf) => appendLog(logFile, buf.toString()))
-    localApiProcess.on('exit', (code) => {
-      appendLog(logFile, `\nAPI exit code=${code}\n`)
-      localApiProcess = null
-    })
-
-    for (let i = 0; i < 45; i++) {
-      sendSplash('splash-status', `Preparando banco e login local… (${i + 1}/45)`)
-      await new Promise((r) => setTimeout(r, 1000))
-      if (await healthCheck(config.apiBaseUrl)) {
-        sendSplash('splash-status', 'Banco local pronto')
-        apiOk = true
-        break
-      }
-      if (!localApiProcess) break
-    }
-
-    if (!apiOk) {
-      sendSplash(
-        'splash-error',
-        `A API local não subiu. Veja o log:\n${logFile}`
-      )
-      return false
-    }
+  if (!apiOk) {
+    sendSplash(
+      'splash-error',
+      `A API local não subiu. Veja o log:\n${logFile}`
+    )
+    return false
   }
 
   await ensureVision()
   return true
 }
-
 function resolveRendererIndex() {
   const built = path.join(__dirname, '..', 'renderer', 'index.html')
   if (fs.existsSync(built)) return built
@@ -457,6 +477,21 @@ ipcMain.handle('open-data-dir', async () => {
   const dir = dataDir()
   fs.mkdirSync(dir, { recursive: true })
   await shell.openPath(dir)
+})
+
+ipcMain.handle('reset-local-data', async () => {
+  stopOwnedProcesses()
+  stopStraySmartGuardProcesses()
+  await new Promise((r) => setTimeout(r, 500))
+  rmDirRecursive(instanceRoot())
+  // remove também a pasta legada compartilhada (causa do “pegar usuário de outra instalação”)
+  try {
+    const legacyDb = path.join(legacyDataDir(), 'seguranca_inteligente.db')
+    if (fs.existsSync(legacyDb)) fs.unlinkSync(legacyDb)
+  } catch {
+    // ignore
+  }
+  return { ok: true, dataDir: dataDir() }
 })
 
 app.whenReady().then(boot)

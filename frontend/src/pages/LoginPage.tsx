@@ -156,6 +156,31 @@ export function LoginPage() {
                 Novos cadastros estão fechados. O administrador libera em Configurações.
               </p>
             )}
+            {(window as unknown as { smartguardDesktop?: { resetLocalData: () => Promise<unknown> } }).smartguardDesktop ? (
+              <button
+                type="button"
+                className="w-full text-left text-xs text-sg-muted underline hover:text-sg-text"
+                onClick={async () => {
+                  const desktop = (window as unknown as {
+                    smartguardDesktop?: { resetLocalData: () => Promise<unknown> }
+                  }).smartguardDesktop
+                  if (!desktop) return
+                  const ok = window.confirm(
+                    'Isso apaga os usuários desta instalação e volta para o cadastro do administrador. Continuar?',
+                  )
+                  if (!ok) return
+                  try {
+                    await desktop.resetLocalData()
+                    window.alert('Dados apagados. Feche e abra o SmartGuard de novo.')
+                    window.location.reload()
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Falha ao zerar dados')
+                  }
+                }}
+              >
+                Não reconhece estes usuários? Zerar esta instalação
+              </button>
+            ) : null}
           </form>
         ) : (
           <form onSubmit={handleRegister} className="space-y-3">
