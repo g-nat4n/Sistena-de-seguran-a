@@ -127,8 +127,22 @@ export function LoginPage() {
 
         {(tab === 'login' && !info?.needsSetup) ? (
           <form onSubmit={handleLogin} className="space-y-3">
-            <TextField label="E-mail" type="email" value={email} required onChange={setEmail} />
-            <TextField label="Senha" type="password" value={password} required onChange={setPassword} />
+            <TextField
+              label="E-mail"
+              type="email"
+              value={email}
+              required
+              placeholder="Ex.: admin@loja.com"
+              onChange={setEmail}
+            />
+            <TextField
+              label="Senha"
+              type="password"
+              value={password}
+              required
+              placeholder="Sua senha de acesso"
+              onChange={setPassword}
+            />
             {error ? <p className="text-sm text-sg-red">{error}</p> : null}
             <button
               type="submit"
@@ -150,10 +164,38 @@ export function LoginPage() {
                 O primeiro usuário deste PC será o <strong className="text-sg-text">administrador</strong>.
               </p>
             )}
-            <TextField label="Seu nome" value={name} required onChange={setName} />
-            <TextField label="E-mail" type="email" value={email} required onChange={setEmail} />
-            <TextField label="Senha" type="password" value={password} required onChange={setPassword} />
-            <TextField label="Confirmar senha" type="password" value={confirmPassword} required onChange={setConfirmPassword} />
+            <TextField
+              label="Seu nome"
+              value={name}
+              required
+              placeholder="Ex.: João Silva"
+              onChange={setName}
+            />
+            <TextField
+              label="E-mail"
+              type="email"
+              value={email}
+              required
+              placeholder="Ex.: admin@loja.com"
+              onChange={setEmail}
+            />
+            <TextField
+              label="Senha"
+              type="password"
+              value={password}
+              required
+              placeholder="Crie uma senha"
+              hint="Guarde esta senha: é o login deste PC."
+              onChange={setPassword}
+            />
+            <TextField
+              label="Confirmar senha"
+              type="password"
+              value={confirmPassword}
+              required
+              placeholder="Digite a senha novamente"
+              onChange={setConfirmPassword}
+            />
             {error ? <p className="text-sm text-sg-red">{error}</p> : null}
             <button
               type="submit"

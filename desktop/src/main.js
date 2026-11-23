@@ -249,6 +249,7 @@ async function ensureVision() {
         VISION_SERVICE_TOKEN: 'smartguard-vision-dev-token',
         VISION_PUBLIC_BASE_URL: 'http://127.0.0.1:8090',
         DETECTION_ENABLED: 'false',
+        RTSP_OPEN_TIMEOUT_SECONDS: '8',
         EVIDENCE_DIR: evidenceDir,
       },
       detached: false,

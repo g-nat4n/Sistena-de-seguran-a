@@ -106,7 +106,7 @@ export function CamerasPage() {
     <div>
       <PageHeader
         title="Gerenciamento de Câmeras"
-        description="Cadastre a câmera e, no detalhe (Monitoramento → Abrir), configure o RTSP Intelbras com usuário/senha."
+        description="Preencha nome, identificação e localização. Depois, em Monitoramento → Abrir, configure o RTSP com o IP da câmera."
       />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -114,17 +114,28 @@ export function CamerasPage() {
           <h2 className="font-display text-lg font-semibold">
             {editingId ? 'Editar câmera' : 'Nova câmera'}
           </h2>
-          <TextField label="Nome" value={form.name} required onChange={(name) => setForm((p) => ({ ...p, name }))} />
+          <TextField
+            label="Nome"
+            value={form.name}
+            required
+            placeholder="Ex.: Entrada, Portão, Estoque"
+            hint="Como a câmera aparece no sistema."
+            onChange={(name) => setForm((p) => ({ ...p, name }))}
+          />
           <TextField
             label="Identificação"
             value={form.identifier}
             required
+            placeholder="Ex.: CAM-01"
+            hint="Código interno único (você define)."
             onChange={(identifier) => setForm((p) => ({ ...p, identifier }))}
           />
           <TextField
             label="Localização"
             value={form.location}
             required
+            placeholder="Ex.: Recepção, Sala 2, Estacionamento"
+            hint="Onde a câmera está instalada."
             onChange={(location) => setForm((p) => ({ ...p, location }))}
           />
           <SelectField
@@ -152,14 +163,17 @@ export function CamerasPage() {
             onChange={(status) => setForm((p) => ({ ...p, status: status as CameraStatus }))}
           />
           <TextField
-            label="Descrição"
+            label="Descrição (opcional)"
             value={form.description}
+            placeholder="Ex.: Câmera da frente, canal 1 do DVR"
+            hint="Pode deixar em branco."
             onChange={(description) => setForm((p) => ({ ...p, description }))}
           />
           <TextField
-            label="URL de mídia demonstrativa"
+            label="URL de mídia demonstrativa (opcional)"
             value={form.demoMediaUrl}
-            placeholder="https://..."
+            placeholder="Deixe vazio para usar RTSP real"
+            hint="Só para teste/demo. Câmera Intelbras real configura no Monitoramento → RTSP."
             onChange={(demoMediaUrl) => setForm((p) => ({ ...p, demoMediaUrl }))}
           />
           <div className="flex gap-2 pt-2">

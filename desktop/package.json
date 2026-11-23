@@ -1,6 +1,6 @@
 {
   "name": "smartguard-desktop",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "SmartGuard AI — aplicativo Windows",
   "main": "src/main.js",
   "author": "SmartGuard",
@@ -57,7 +57,9 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "SmartGuard AI",
-      "license": "license.txt"
+      "license": "license.txt",
+      "include": "installer.nsh",
+      "warningsAsErrors": false
     }
   },
   "devDependencies": {

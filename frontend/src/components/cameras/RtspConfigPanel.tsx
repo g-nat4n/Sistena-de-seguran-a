@@ -208,7 +208,7 @@ export function RtspConfigPanel({ camera, onUpdated }: RtspConfigPanelProps) {
         <div>
           <h3 className="font-display text-lg font-semibold">RTSP Intelbras</h3>
           <p className="text-xs text-sg-muted">
-            A senha é criptografada no backend e nunca retorna na API. Mantenha o serviço Python (porta 8090) no ar.
+            Use o IP da câmera/DVR na rede local. A senha é criptografada e não aparece de novo depois de salvar.
           </p>
         </div>
         <Badge tone={streamTone}>{streamStateLabel(camera.streamState ?? 'IDLE')}</Badge>
@@ -216,26 +216,40 @@ export function RtspConfigPanel({ camera, onUpdated }: RtspConfigPanelProps) {
 
       <div className="grid gap-3 md:grid-cols-2">
         <TextField
-          label="Host / IP (não use código RSV)"
+          label="Host / IP"
           value={host}
           onChange={setHost}
-          placeholder="192.168.1.50"
+          placeholder="Ex.: 192.168.1.50"
+          hint="IP da câmera na rede. Não use código RSV/série."
         />
-        <TextField label="Porta RTSP" value={port} onChange={setPort} placeholder="554" />
-
+        <TextField
+          label="Porta RTSP"
+          value={port}
+          onChange={setPort}
+          placeholder="554"
+          hint="Na maioria das Intelbras é 554."
+        />
         <TextField
           label="Path"
           value={path}
           onChange={setPath}
           placeholder="/cam/realmonitor?channel=1&subtype=0"
+          hint="channel = número da câmera no DVR. subtype=0 principal, 1 = substream."
         />
-        <TextField label="Usuário" value={username} onChange={setUsername} placeholder="admin" />
+        <TextField
+          label="Usuário"
+          value={username}
+          onChange={setUsername}
+          placeholder="admin"
+          hint="Login da câmera/DVR (não o login do SmartGuard)."
+        />
         <TextField
           label={camera.rtspConfigured ? 'Senha (deixe vazio para manter)' : 'Senha'}
           type="password"
           value={password}
           onChange={setPassword}
-          placeholder="••••••••"
+          placeholder={camera.rtspConfigured ? '•••••••• (já salva)' : 'Senha da câmera/DVR'}
+          hint="Mesma senha usada no app ou navegador da Intelbras."
         />
       </div>
 
