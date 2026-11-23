@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, Menu, Notification, nativeImage } = require('electron')
 const path = require('path')
 const http = require('http')
 const { spawn, spawnSync } = require('child_process')
@@ -494,7 +494,43 @@ ipcMain.handle('reset-local-data', async () => {
   return { ok: true, dataDir: dataDir() }
 })
 
-app.whenReady().then(boot)
+ipcMain.handle('show-notification', async (_e, payload = {}) => {
+  if (!Notification.isSupported()) {
+    return { ok: false, reason: 'unsupported' }
+  }
+  const title = String(payload.title || 'SmartGuard AI')
+  const body = String(payload.body || '')
+  const alertId = payload.alertId != null ? String(payload.alertId) : ''
+
+  const iconCandidates = [
+    path.join(__dirname, '..', 'assets', 'icon.png'),
+    path.join(process.resourcesPath || '', 'assets', 'icon.png'),
+  ]
+  const iconPath = iconCandidates.find((p) => fs.existsSync(p))
+  const note = new Notification({
+    title,
+    body,
+    icon: iconPath ? nativeImage.createFromPath(iconPath) : undefined,
+    silent: false,
+    urgency: 'critical',
+  })
+  note.on('click', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
+      mainWindow.webContents.send('notification-clicked', { alertId })
+    }
+  })
+  note.show()
+  return { ok: true }
+})
+
+app.whenReady().then(() => {
+  // Remove barra File/Edit/View/Window/Help
+  Menu.setApplicationMenu(null)
+  boot()
+})
 
 app.on('window-all-closed', () => {
   stopOwnedProcesses()

@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { AlertDetailPanel } from '../components/alerts/AlertDetailPanel'
 import { Badge } from '../components/ui/Badge'
 import { ErrorState } from '../components/ui/ErrorState'
@@ -30,6 +31,8 @@ export function AlertsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [live, setLive] = useState(true)
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const load = useCallback(async (nextFilters: AlertFilters, silent = false) => {
     if (!silent) setLoading(true)
@@ -58,6 +61,15 @@ export function AlertsPage() {
       setError(err instanceof Error ? err.message : 'Falha ao abrir alerta')
     }
   }
+
+  useEffect(() => {
+    const state = location.state as { openAlertId?: number } | null
+    if (state?.openAlertId) {
+      void openDetails(state.openAlertId)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
 
   async function handleDelete(id: number, publicId: string) {
     if (!window.confirm(`Excluir o alerta ${publicId}? Esta ação não pode ser desfeita.`)) return

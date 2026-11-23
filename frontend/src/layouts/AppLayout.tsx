@@ -14,6 +14,7 @@ import {
 import { useState } from 'react'
 import { ConnectionBanner } from '../components/system/ConnectionBanner'
 import { useAuth } from '../contexts/AuthContext'
+import { useAlertNotifications } from '../hooks/useAlertNotifications'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -30,6 +31,7 @@ const navItems = [
 export function AppLayout() {
   const [open, setOpen] = useState(false)
   const { user, logout } = useAuth()
+  useAlertNotifications(Boolean(user))
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
