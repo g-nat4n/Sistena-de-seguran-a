@@ -398,8 +398,17 @@ function openMainWindow() {
     mainWindow.webContents.send('smartguard-config', preloadData)
   })
 
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    const msg = `Falha ao carregar interface (${code}): ${desc}\n${url}`
+    appendLog(path.join(logsDir(), 'ui-launcher.log'), `\n${new Date().toISOString()} ${msg}\n`)
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      sendSplash('splash-error', msg)
+    }
+  })
+
   const renderer = resolveRendererIndex()
   if (renderer) {
+    // loadFile + base ./ no build Electron (paths relativos)
     mainWindow.loadFile(renderer, { query: { api: config.apiBaseUrl } })
   } else {
     mainWindow.loadURL(`http://127.0.0.1:5173/?api=${encodeURIComponent(config.apiBaseUrl)}`)

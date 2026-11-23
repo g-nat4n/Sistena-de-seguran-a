@@ -15,7 +15,10 @@ import { SettingsPage } from './pages/SettingsPage'
 import { SimulatorPage } from './pages/SimulatorPage'
 
 export default function App() {
-  const isDesktop = typeof window !== 'undefined' && Boolean((window as unknown as { smartguardDesktop?: unknown }).smartguardDesktop)
+  const isDesktop =
+    typeof window !== 'undefined' &&
+    (Boolean((window as unknown as { smartguardDesktop?: unknown }).smartguardDesktop) ||
+      window.location.protocol === 'file:')
   const Router = isDesktop ? HashRouter : BrowserRouter
 
   return (
