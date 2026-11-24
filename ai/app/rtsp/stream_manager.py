@@ -8,7 +8,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict
 
-import cv2
 import requests
 
 from app.config import (
@@ -26,7 +25,7 @@ from app.config import (
     YOLO_POSE_MODEL,
 )
 from app.detection.frame_buffer import FrameRingBuffer
-from app.rtsp.connection import mask_rtsp_url, probe_rtsp
+from app.rtsp.connection import mask_rtsp_url, open_rtsp_capture, probe_rtsp
 
 logger = logging.getLogger("smartguard.rtsp")
 
@@ -36,6 +35,7 @@ class StreamHandle:
     camera_id: int
     camera_identifier: str
     rtsp_url: str
+    preferred_transport: str | None = None
     stop_event: threading.Event = field(default_factory=threading.Event)
     thread: threading.Thread | None = None
 
@@ -81,15 +81,32 @@ class StreamManager:
         return {"success": result.success, "message": result.message}
 
     def start(self, camera_id: int, rtsp_url: str, camera_identifier: str) -> dict:
+        # Valida conexão antes de marcar stream como iniciado (evita "sucesso fantasma")
+        probe = probe_rtsp(rtsp_url, OPEN_TIMEOUT_SECONDS)
+        if not probe.success:
+            logger.warning(
+                "Start recusado camera_id=%s url=%s motivo=%s",
+                camera_id,
+                mask_rtsp_url(rtsp_url),
+                probe.message,
+            )
+            return {"success": False, "message": probe.message}
+
         with self._lock:
             existing = self._streams.get(camera_id)
             if existing and existing.thread and existing.thread.is_alive():
-                return {"success": True, "message": "Stream já estava em execução"}
+                existing.rtsp_url = rtsp_url
+                existing.preferred_transport = probe.transport
+                return {
+                    "success": True,
+                    "message": "Stream já estava em execução (URL atualizada se necessário)",
+                }
 
             handle = StreamHandle(
                 camera_id=camera_id,
                 camera_identifier=camera_identifier,
                 rtsp_url=rtsp_url,
+                preferred_transport=probe.transport,
             )
             thread = threading.Thread(
                 target=self._run_loop,
@@ -102,13 +119,16 @@ class StreamManager:
             thread.start()
 
         logger.info(
-            "Stream iniciado camera_id=%s identifier=%s url=%s detection=%s",
+            "Stream iniciado camera_id=%s identifier=%s url=%s transport=%s detection=%s",
             camera_id,
             camera_identifier,
             mask_rtsp_url(rtsp_url),
+            probe.transport or "?",
             DETECTION_ENABLED,
         )
-        return {"success": True, "message": "Stream iniciado com detecção" if DETECTION_ENABLED else "Stream iniciado"}
+        suffix = f" via {probe.transport.upper()}" if probe.transport else ""
+        base = "Stream iniciado com detecção" if DETECTION_ENABLED else "Stream iniciado"
+        return {"success": True, "message": f"{base}{suffix}"}
 
     def stop(self, camera_id: int) -> dict:
         with self._lock:
@@ -143,20 +163,31 @@ class StreamManager:
             capture = None
             try:
                 self._heartbeat(camera_id, "CONNECTING", None)
-                capture = cv2.VideoCapture(handle.rtsp_url, cv2.CAP_FFMPEG)
-                if not capture.isOpened():
-                    raise RuntimeError("Falha ao abrir RTSP")
+                capture, transport, open_error = open_rtsp_capture(
+                    handle.rtsp_url,
+                    OPEN_TIMEOUT_SECONDS,
+                    preferred_transport=handle.preferred_transport,
+                )
+                if capture is None:
+                    raise RuntimeError(open_error or "Falha ao abrir RTSP")
 
-                capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                if transport:
+                    handle.preferred_transport = transport
                 self._heartbeat(camera_id, "CONNECTED", None)
                 consecutive_failures = 0
                 last_heartbeat = 0.0
+                blank_reads = 0
 
                 while not handle.stop_event.is_set():
                     ok, frame = capture.read()
                     now = time.time()
                     if not ok or frame is None:
-                        raise RuntimeError("Perda de frames no RTSP")
+                        blank_reads += 1
+                        if blank_reads >= 8:
+                            raise RuntimeError("Perda de frames no RTSP")
+                        time.sleep(0.05)
+                        continue
+                    blank_reads = 0
 
                     if now - last_heartbeat >= HEARTBEAT_SECONDS:
                         self._heartbeat(camera_id, "CONNECTED", None)
@@ -192,10 +223,12 @@ class StreamManager:
                 )
                 self._heartbeat(
                     camera_id,
-                    "RECONNECTING" if consecutive_failures < 5 else "ERROR",
+                    "RECONNECTING" if consecutive_failures < 8 else "ERROR",
                     message,
                 )
-                if handle.stop_event.wait(RECONNECT_DELAY_SECONDS):
+                # Backoff: 3s, 4.5s, 6.7s… até 20s — continua tentando indefinidamente
+                delay = min(20.0, RECONNECT_DELAY_SECONDS * (1.5 ** min(consecutive_failures - 1, 6)))
+                if handle.stop_event.wait(delay):
                     break
             finally:
                 if capture is not None:

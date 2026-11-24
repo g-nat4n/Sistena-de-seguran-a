@@ -76,6 +76,16 @@ public class CameraRtspService {
     @Transactional
     public StreamActionResponse testConnection(Long cameraId) {
         Camera camera = requireConfigured(cameraId);
+        if (!visionServiceClient.isReachable()) {
+            camera.setStreamState(StreamState.ERROR);
+            camera.setLastError("Serviço de visão (porta 8090) offline. Reabra o SmartGuard.");
+            return new StreamActionResponse(
+                    cameraId,
+                    StreamState.ERROR.name(),
+                    false,
+                    camera.getLastError()
+            );
+        }
         camera.setStreamState(StreamState.CONNECTING);
         camera.setLastTestedAt(Instant.now());
 
@@ -98,6 +108,16 @@ public class CameraRtspService {
     @Transactional
     public StreamActionResponse startStream(Long cameraId) {
         Camera camera = requireConfigured(cameraId);
+        if (!visionServiceClient.isReachable()) {
+            camera.setStreamState(StreamState.ERROR);
+            camera.setLastError("Serviço de visão (porta 8090) offline. Reabra o SmartGuard.");
+            return new StreamActionResponse(
+                    cameraId,
+                    StreamState.ERROR.name(),
+                    false,
+                    camera.getLastError()
+            );
+        }
         camera.setStreamState(StreamState.CONNECTING);
         camera.setLastError(null);
 

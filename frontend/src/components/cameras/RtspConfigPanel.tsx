@@ -101,6 +101,24 @@ function explainRtspError(raw: string): Feedback {
   }
 }
 
+const PATH_PRESETS = [
+  {
+    id: 'intelbras-main',
+    label: 'Intelbras canal 1 (principal)',
+    path: '/cam/realmonitor?channel=1&subtype=0',
+  },
+  {
+    id: 'intelbras-sub',
+    label: 'Intelbras canal 1 (substream — mais leve)',
+    path: '/cam/realmonitor?channel=1&subtype=1',
+  },
+  {
+    id: 'intelbras-ch2',
+    label: 'Intelbras canal 2',
+    path: '/cam/realmonitor?channel=2&subtype=0',
+  },
+] as const
+
 export function RtspConfigPanel({ camera, onUpdated }: RtspConfigPanelProps) {
   const [host, setHost] = useState(camera.rtspHost ?? '')
   const [port, setPort] = useState(String(camera.rtspPort ?? 554))
@@ -110,28 +128,65 @@ export function RtspConfigPanel({ camera, onUpdated }: RtspConfigPanelProps) {
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
 
+  async function persistConfig() {
+    const updated = await configureCameraRtsp(camera.id, {
+      host,
+      port: Number(port) || 554,
+      path,
+      username,
+      password: password || undefined,
+    })
+    setPassword('')
+    onUpdated(updated)
+    return updated
+  }
+
   async function saveConfig() {
     setBusy(true)
     setFeedback(null)
     try {
-      const updated = await configureCameraRtsp(camera.id, {
-        host,
-        port: Number(port) || 554,
-        path,
-        username,
-        password: password || undefined,
-      })
-      setPassword('')
-      onUpdated(updated)
+      await persistConfig()
       setFeedback({
         ok: true,
         title: 'RTSP salvo',
         detail: 'Credenciais gravadas. A senha não é exibida novamente.',
-        tip: 'Agora clique em “Testar conexão”.',
+        tip: 'Agora clique em “Testar conexão” ou em “Conectar agora”.',
       })
     } catch (err) {
       setFeedback(
         explainRtspError(err instanceof Error ? err.message : 'Falha ao salvar RTSP'),
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function connectNow() {
+    setBusy(true)
+    setFeedback(null)
+    try {
+      await persistConfig()
+      const test = await testCameraRtsp(camera.id)
+      if (!test.success) {
+        setFeedback(explainRtspError(test.message))
+        onUpdated(await fetchCameraById(camera.id))
+        return
+      }
+      const start = await startCameraStream(camera.id)
+      onUpdated(await fetchCameraById(camera.id))
+      if (start.success) {
+        setFeedback({
+          ok: true,
+          title: 'Câmera conectada',
+          detail: start.message,
+          tip: 'Status deve ir para Conectado. Se cair, o app tenta reconectar sozinho.',
+        })
+      } else {
+        setFeedback(explainRtspError(start.message))
+      }
+    } catch (err) {
+      setFeedback(
+        explainRtspError(err instanceof Error ? err.message : 'Falha ao conectar a câmera'),
       )
     } finally {
       setBusy(false)
@@ -167,9 +222,9 @@ export function RtspConfigPanel({ camera, onUpdated }: RtspConfigPanelProps) {
           detail: result.message,
           tip:
             action === 'test'
-              ? 'Pode clicar em “Iniciar stream”.'
+              ? 'Pode clicar em “Iniciar stream” ou “Conectar agora”.'
               : action === 'start'
-                ? 'Aguarde o status mudar para Conectado.'
+                ? 'Aguarde o status mudar para Conectado. Quedas são reconectadas automaticamente.'
                 : 'Stream interrompido.',
         })
       } else {
@@ -229,13 +284,28 @@ export function RtspConfigPanel({ camera, onUpdated }: RtspConfigPanelProps) {
           placeholder="554"
           hint="Na maioria das Intelbras é 554."
         />
-        <TextField
-          label="Path"
-          value={path}
-          onChange={setPath}
-          placeholder="/cam/realmonitor?channel=1&subtype=0"
-          hint="channel = número da câmera no DVR. subtype=0 principal, 1 = substream."
-        />
+        <div className="md:col-span-2">
+          <TextField
+            label="Path"
+            value={path}
+            onChange={setPath}
+            placeholder="/cam/realmonitor?channel=1&subtype=0"
+            hint="channel = número da câmera no DVR. subtype=0 principal, 1 = substream."
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            {PATH_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                disabled={busy}
+                onClick={() => setPath(preset.path)}
+                className="rounded-md border border-sg-border px-2 py-1 text-[11px] text-sg-muted transition hover:border-sg-blue/50 hover:text-sg-text disabled:opacity-50"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <TextField
           label="Usuário"
           value={username}
@@ -254,6 +324,14 @@ export function RtspConfigPanel({ camera, onUpdated }: RtspConfigPanelProps) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy || !host.trim() || !username.trim() || (!camera.rtspConfigured && !password)}
+          onClick={() => void connectNow()}
+          className="rounded-lg bg-sg-green px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+        >
+          {busy ? 'Conectando…' : 'Conectar agora'}
+        </button>
         <button
           type="button"
           disabled={busy}
