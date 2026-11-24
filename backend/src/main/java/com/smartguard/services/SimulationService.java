@@ -35,6 +35,7 @@ public class SimulationService {
     private final OccurrenceHistoryRepository occurrenceHistoryRepository;
     private final AlertService alertService;
     private final AlertLabelMapper alertLabelMapper;
+    private final AlertNotifyService alertNotifyService;
 
     @Transactional
     public AlertResponse simulate(SimulateEventRequest request) {
@@ -143,6 +144,9 @@ public class SimulationService {
                         ? "Evento gerado pelo simulador. Não representa detecção real."
                         : "Evento recebido via integração do módulo de IA.")
                 .build());
+
+        // Notifica Telegram/e-mail para prioridades configuradas (HIGH/CRITICAL por padrão)
+        alertNotifyService.notifyNewAlert(saved, camera);
 
         return alertService.getById(saved.getId());
     }

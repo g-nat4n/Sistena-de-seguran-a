@@ -12,6 +12,7 @@ import {
   type StoreSettings,
 } from '../services/settingsService'
 import type { AuthUser } from '../types/auth'
+import { NotificationSettingsPanel } from '../components/settings/NotificationSettingsPanel'
 import { priorityLabel } from '../utils/labels'
 
 export function SettingsPage() {
@@ -129,6 +130,8 @@ export function SettingsPage() {
           </div>
         </section>
       </div>
+
+      {isAdmin ? <NotificationSettingsPanel /> : null}
 
       <section className="mt-4 rounded-xl border border-sg-border bg-sg-card/90 p-4">
         <h2 className="font-display text-lg font-semibold">Áreas / prioridades de monitoramento</h2>

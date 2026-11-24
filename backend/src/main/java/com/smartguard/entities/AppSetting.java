@@ -26,7 +26,7 @@ public class AppSetting {
     @Column(name = "setting_key", length = 80)
     private String key;
 
-    @Column(name = "setting_value", nullable = false, length = 500)
+    @Column(name = "setting_value", nullable = false, length = 2000)
     private String value;
 
     @Column(nullable = false)
