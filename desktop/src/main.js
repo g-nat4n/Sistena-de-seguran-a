@@ -323,7 +323,11 @@ async function ensureVision() {
         SMARTGUARD_API_URL: 'http://127.0.0.1:8080/api',
         VISION_SERVICE_TOKEN: 'smartguard-vision-dev-token',
         VISION_PUBLIC_BASE_URL: 'http://127.0.0.1:8090',
-        DETECTION_ENABLED: 'false',
+        DETECTION_ENABLED: 'true',
+        // Presença simples gera ruído com HOG; permanência/comportamento ficam ligados
+        PERSON_ALERT_ENABLED: 'false',
+        EVIDENCE_CLIP_SECONDS: '6',
+        EVIDENCE_CLIP_FPS: '5',
         RTSP_OPEN_TIMEOUT_SECONDS: '8',
         EVIDENCE_DIR: evidenceDir,
       },
@@ -615,6 +619,114 @@ ipcMain.handle('show-notification', async (_e, payload = {}) => {
   return { ok: true, styled }
 })
 
+let updateStatus = {
+  checking: false,
+  available: false,
+  downloaded: false,
+  version: null,
+  message: null,
+  error: null,
+}
+
+function sendUpdateStatus() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', updateStatus)
+  }
+}
+
+function setupAutoUpdater() {
+  if (!app.isPackaged) {
+    updateStatus = { ...updateStatus, message: 'Atualização automática só no app instalado.' }
+    return
+  }
+
+  let autoUpdater
+  try {
+    ;({ autoUpdater } = require('electron-updater'))
+  } catch (err) {
+    updateStatus = {
+      ...updateStatus,
+      error: err instanceof Error ? err.message : 'electron-updater indisponível',
+    }
+    return
+  }
+
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+
+  autoUpdater.on('checking-for-update', () => {
+    updateStatus = { ...updateStatus, checking: true, error: null, message: 'Procurando atualização…' }
+    sendUpdateStatus()
+  })
+  autoUpdater.on('update-available', (info) => {
+    updateStatus = {
+      checking: false,
+      available: true,
+      downloaded: false,
+      version: info?.version || null,
+      message: `Nova versão ${info?.version || ''} disponível. Baixando…`,
+      error: null,
+    }
+    sendUpdateStatus()
+  })
+  autoUpdater.on('update-not-available', () => {
+    updateStatus = {
+      checking: false,
+      available: false,
+      downloaded: false,
+      version: app.getVersion(),
+      message: 'Você já está na versão mais recente.',
+      error: null,
+    }
+    sendUpdateStatus()
+  })
+  autoUpdater.on('error', (err) => {
+    updateStatus = {
+      ...updateStatus,
+      checking: false,
+      error: err instanceof Error ? err.message : String(err),
+      message: 'Falha ao verificar atualização.',
+    }
+    sendUpdateStatus()
+  })
+  autoUpdater.on('update-downloaded', (info) => {
+    updateStatus = {
+      checking: false,
+      available: true,
+      downloaded: true,
+      version: info?.version || null,
+      message: `Versão ${info?.version || ''} pronta. Reinicie para instalar.`,
+      error: null,
+    }
+    sendUpdateStatus()
+  })
+
+  ipcMain.handle('check-for-updates', async () => {
+    try {
+      const result = await autoUpdater.checkForUpdates()
+      return { ok: true, version: result?.updateInfo?.version || null, status: updateStatus }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      updateStatus = { ...updateStatus, checking: false, error: message, message: 'Falha ao verificar atualização.' }
+      sendUpdateStatus()
+      return { ok: false, error: message, status: updateStatus }
+    }
+  })
+
+  ipcMain.handle('install-update', () => {
+    if (!updateStatus.downloaded) return { ok: false, reason: 'not-downloaded' }
+    setImmediate(() => autoUpdater.quitAndInstall(false, true))
+    return { ok: true }
+  })
+
+  ipcMain.handle('get-update-status', () => updateStatus)
+
+  // Checagem inicial (silenciosa) após a UI subir
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch(() => {})
+  }, 8000)
+}
+
 if (gotTheLock) {
   app.on('second-instance', () => {
     focusMainWindow()
@@ -623,6 +735,7 @@ if (gotTheLock) {
   app.whenReady().then(() => {
     // Remove barra File/Edit/View/Window/Help
     Menu.setApplicationMenu(null)
+    setupAutoUpdater()
     boot()
 
     // Hook local de teste (só em desenvolvimento / electron .)

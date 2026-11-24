@@ -67,22 +67,28 @@ export function AlertDetailPanel({ alert, onUpdated, onClose, onDeleted }: Alert
 
         <div className="grid gap-4 p-4 md:grid-cols-2">
           <div className="space-y-3">
-            {alert.evidenceUrl ? (
-              isVideoEvidence(alert.evidenceUrl) ? (
-                <video
-                  src={alert.evidenceUrl}
-                  controls
-                  playsInline
-                  className="aspect-video w-full rounded-lg bg-black object-contain"
-                />
-              ) : (
-                <img
-                  src={alert.evidenceUrl}
-                  alt="Evidência do alerta"
-                  className="aspect-video w-full rounded-lg object-cover"
-                />
-              )
-            ) : null}
+            {(alert.evidences?.length ? alert.evidences : alert.evidenceUrl
+              ? [{ id: 0, mediaUrl: alert.evidenceUrl, mediaType: isVideoEvidence(alert.evidenceUrl) ? 'video' : 'image', caption: '', createdAt: alert.occurredAt }]
+              : []
+            ).map((ev) => (
+              <div key={ev.id || ev.mediaUrl} className="space-y-1">
+                {isVideoEvidence(ev.mediaUrl) || ev.mediaType === 'video' ? (
+                  <video
+                    src={ev.mediaUrl}
+                    controls
+                    playsInline
+                    className="aspect-video w-full rounded-lg bg-black object-contain"
+                  />
+                ) : (
+                  <img
+                    src={ev.mediaUrl}
+                    alt={ev.caption || 'Evidência do alerta'}
+                    className="aspect-video w-full rounded-lg object-cover"
+                  />
+                )}
+                {ev.caption ? <p className="text-[11px] text-sg-muted">{ev.caption}</p> : null}
+              </div>
+            ))}
             <p className="text-sm leading-relaxed text-sg-text">{alert.description}</p>
             <div className="flex flex-wrap gap-2">
               <Badge tone="amber">{priorityLabel(alert.priority)}</Badge>

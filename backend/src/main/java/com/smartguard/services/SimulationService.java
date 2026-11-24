@@ -48,7 +48,7 @@ public class SimulationService {
                 ? camera.getDemoMediaUrl()
                 : request.evidenceUrl().trim();
 
-        return persistSimulatedAlert(camera, type, priority, description, evidenceUrl, true);
+        return persistSimulatedAlert(camera, type, priority, description, evidenceUrl, null, true);
     }
 
     @Transactional
@@ -63,14 +63,20 @@ public class SimulationService {
                     + String.format("%.2f", request.confidence()) + ")";
         }
 
+        String evidenceUrl = request.evidenceUrl() == null || request.evidenceUrl().isBlank()
+                ? camera.getDemoMediaUrl()
+                : request.evidenceUrl().trim();
+        String clipUrl = request.evidenceClipUrl() == null || request.evidenceClipUrl().isBlank()
+                ? null
+                : request.evidenceClipUrl().trim();
+
         return persistSimulatedAlert(
                 camera,
                 request.alertType(),
                 request.priority(),
                 description,
-                request.evidenceUrl() == null || request.evidenceUrl().isBlank()
-                        ? camera.getDemoMediaUrl()
-                        : request.evidenceUrl().trim(),
+                evidenceUrl,
+                clipUrl,
                 request.simulated()
         );
     }
@@ -93,6 +99,7 @@ public class SimulationService {
             AlertPriority priority,
             String description,
             String evidenceUrl,
+            String evidenceClipUrl,
             boolean simulated
     ) {
         Alert alert = Alert.builder()
@@ -108,11 +115,24 @@ public class SimulationService {
 
         Alert saved = alertRepository.save(alert);
 
+        // Clip primeiro (vira evidenceUrl principal na API); snapshot em seguida.
+        if (evidenceClipUrl != null && !evidenceClipUrl.isBlank()) {
+            alertEvidenceRepository.save(AlertEvidence.builder()
+                    .alert(saved)
+                    .mediaUrl(evidenceClipUrl.trim())
+                    .mediaType(mediaTypeFor(evidenceClipUrl))
+                    .caption(captionFor(evidenceClipUrl, simulated, type))
+                    .build());
+        }
+
+        String snapshotUrl = evidenceUrl == null
+                ? "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800"
+                : evidenceUrl;
         alertEvidenceRepository.save(AlertEvidence.builder()
                 .alert(saved)
-                .mediaUrl(evidenceUrl == null ? "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800" : evidenceUrl)
-                .mediaType("image")
-                .caption(captionFor(evidenceUrl, simulated, type))
+                .mediaUrl(snapshotUrl)
+                .mediaType(mediaTypeFor(snapshotUrl))
+                .caption(captionFor(snapshotUrl, simulated, type))
                 .build());
 
         occurrenceHistoryRepository.save(OccurrenceHistory.builder()
@@ -125,6 +145,17 @@ public class SimulationService {
                 .build());
 
         return alertService.getById(saved.getId());
+    }
+
+    private String mediaTypeFor(String evidenceUrl) {
+        if (evidenceUrl == null) {
+            return "image";
+        }
+        String lower = evidenceUrl.toLowerCase();
+        if (lower.contains(".webm") || lower.contains(".mp4") || lower.contains("video/")) {
+            return "video";
+        }
+        return "image";
     }
 
     private Camera resolveCamera(Long cameraId) {

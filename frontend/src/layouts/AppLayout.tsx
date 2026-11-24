@@ -14,6 +14,7 @@ import {
 import { useState } from 'react'
 import { ConnectionBanner } from '../components/system/ConnectionBanner'
 import { NotificationCenter } from '../components/system/NotificationCenter'
+import { UpdateBanner } from '../components/system/UpdateBanner'
 import { useAuth } from '../contexts/AuthContext'
 import { useAlertNotifications } from '../hooks/useAlertNotifications'
 
@@ -96,6 +97,7 @@ export function AppLayout() {
 
       <div className="min-w-0">
         <ConnectionBanner />
+        <UpdateBanner />
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-sg-border bg-[#0b1120]/80 px-4 backdrop-blur-md md:px-6">
           <button
             type="button"

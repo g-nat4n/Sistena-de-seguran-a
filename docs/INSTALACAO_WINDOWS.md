@@ -12,7 +12,10 @@ Cada instalação tem **banco SQLite criptografado (SQLCipher) próprio**.
 5. No **primeiro acesso**, cadastre o administrador deste PC (e-mail + senha)
 6. Não use login demo antigo (`admin@…` / `admin123`) — o Setup atual começa **sem usuários**
 
-Release atual: [v1.2.8](https://github.com/g-nat4n/Sistena-de-seguran-a/releases) (ou a tag mais recente).
+Release atual: [GitHub Releases](https://github.com/g-nat4n/Sistena-de-seguran-a/releases) (use a tag mais recente, ex.: v1.3.0).
+
+Download direto do instalador (exemplo 1.3.0):  
+`https://github.com/g-nat4n/Sistena-de-seguran-a/releases/download/v1.3.0/SmartGuard-AI-Setup.exe`
 
 ## Arquitetura (local independente)
 
@@ -39,11 +42,14 @@ Não há sincronização automática entre PCs. Instalar em outro computador cri
 - Pacote Vision + Python embutido
 - Interface (renderer) + toast de alerta + centro de notificações (sino)
 
-## Notificações
+## Notificações, detecção e evidência
 
 - Toast flutuante no canto do Windows (estilo SmartGuard, com **ATENÇÃO**)
 - Dentro do app: ícone de **sino** no topo (lista estilo Facebook)
 - Central de Alertas: tela completa de eventos
+- Com stream RTSP **iniciado**, a detecção fica ligada (permanência / comportamento anônimo)
+- No alerta real: **snapshot** + **clip curto (~6s)** quando houver buffer de frames
+- Sem YOLO embutido, o Vision usa fallback HOG (mais fraco que YOLO, mas gera alerta)
 
 ## Backup e restauração
 
@@ -53,9 +59,15 @@ Não há sincronização automática entre PCs. Instalar em outro computador cri
 
 ## Atualização
 
+A partir da **1.3.0**, o app verifica atualizações no GitHub Releases automaticamente (banner no topo + botão em **Este PC**).  
+Quando a versão baixar: **Reiniciar e atualizar**.
+
+Também funciona o jeito manual:
 1. Feche o SmartGuard AI
 2. Instale a nova versão do `SmartGuard-AI-Setup.exe` por cima
 3. Dados em `ProgramData\SmartGuard\instances\…` **permanecem**
+
+Assinatura digital (SmartScreen): veja `docs/ASSINATURA_CODIGO.md`.
 
 ## Encerrar
 

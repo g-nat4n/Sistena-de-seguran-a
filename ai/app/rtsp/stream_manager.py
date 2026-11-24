@@ -15,6 +15,8 @@ from app.config import (
     BACKEND_BASE_URL,
     DETECTION_ENABLED,
     DETECTION_EVERY_N_FRAMES,
+    EVIDENCE_CLIP_FPS,
+    EVIDENCE_CLIP_SECONDS,
     HEARTBEAT_SECONDS,
     OPEN_TIMEOUT_SECONDS,
     RECONNECT_DELAY_SECONDS,
@@ -23,6 +25,7 @@ from app.config import (
     YOLO_MODEL,
     YOLO_POSE_MODEL,
 )
+from app.detection.frame_buffer import FrameRingBuffer
 from app.rtsp.connection import mask_rtsp_url, probe_rtsp
 
 logger = logging.getLogger("smartguard.rtsp")
@@ -126,10 +129,15 @@ class StreamManager:
         camera_id = handle.camera_id
         consecutive_failures = 0
         tracker = None
+        clip_buffer = FrameRingBuffer(
+            max_frames=max(8, int(EVIDENCE_CLIP_SECONDS * EVIDENCE_CLIP_FPS))
+        )
         if DETECTION_ENABLED:
             self._ensure_detection()
             tracker = self._tracker_cls()
         frame_index = 0
+        last_buffer_push = 0.0
+        buffer_interval = 1.0 / max(1.0, EVIDENCE_CLIP_FPS)
 
         while not handle.stop_event.is_set():
             capture = None
@@ -154,6 +162,10 @@ class StreamManager:
                         self._heartbeat(camera_id, "CONNECTED", None)
                         last_heartbeat = now
 
+                    if DETECTION_ENABLED and now - last_buffer_push >= buffer_interval:
+                        clip_buffer.push(frame)
+                        last_buffer_push = now
+
                     frame_index += 1
                     if DETECTION_ENABLED and tracker is not None and frame_index % DETECTION_EVERY_N_FRAMES == 0:
                         detections = self._get_detector().detect(frame)
@@ -164,6 +176,7 @@ class StreamManager:
                                 camera_identifier=handle.camera_identifier,
                                 frame=frame,
                                 tracks=tracks,
+                                recent_frames=clip_buffer.snapshot(),
                             )
 
                     time.sleep(0.01)

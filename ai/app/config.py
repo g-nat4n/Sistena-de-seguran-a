@@ -40,3 +40,7 @@ EVIDENCE_DIR = os.getenv(
     str(Path(__file__).resolve().parents[1] / "data" / "evidence"),
 )
 DETECTION_ENABLED = os.getenv("DETECTION_ENABLED", "true").lower() in {"1", "true", "yes"}
+
+# Clip de evidência (~últimos N segundos antes do alerta)
+EVIDENCE_CLIP_SECONDS = float(os.getenv("EVIDENCE_CLIP_SECONDS", "6"))
+EVIDENCE_CLIP_FPS = float(os.getenv("EVIDENCE_CLIP_FPS", "5"))

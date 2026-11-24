@@ -16,6 +16,7 @@ import requests
 from app.config import (
     ALERT_COOLDOWN_SECONDS,
     BACKEND_BASE_URL,
+    EVIDENCE_CLIP_FPS,
     MIN_ALERT_CONFIDENCE,
     PERSON_ALERT_ENABLED,
     SERVICE_TOKEN,
@@ -48,6 +49,7 @@ class EventEngine:
         camera_identifier: str,
         frame: np.ndarray,
         tracks: list[Track],
+        recent_frames: list[np.ndarray] | None = None,
     ) -> list[str]:
         created: list[str] = []
         if not tracks:
@@ -70,7 +72,9 @@ class EventEngine:
                 description=signal.description[:500],
                 confidence=signal.confidence,
             )
-            public_id = self._ingest(camera_id, camera_identifier, frame, event, signal.track)
+            public_id = self._ingest(
+                camera_id, camera_identifier, frame, event, signal.track, recent_frames
+            )
             if public_id:
                 created.append(public_id)
                 self._mark(camera_id, signal.alert_type)
@@ -90,7 +94,9 @@ class EventEngine:
                         ),
                         confidence=best.confidence,
                     )
-                    public_id = self._ingest(camera_id, camera_identifier, frame, event, best)
+                    public_id = self._ingest(
+                        camera_id, camera_identifier, frame, event, best, recent_frames
+                    )
                     if public_id:
                         best.movement_alerted = True
                         created.append(public_id)
@@ -118,6 +124,7 @@ class EventEngine:
         frame: np.ndarray,
         event: DetectionEvent,
         track: Track,
+        recent_frames: list[np.ndarray] | None = None,
     ) -> str | None:
         annotated = frame.copy()
         pose = PoseDetection(
@@ -141,6 +148,18 @@ class EventEngine:
         )
         evidence_url = self.evidence.save_frame(camera_id, annotated, event.alert_type.lower())
 
+        clip_url = None
+        if recent_frames:
+            clip_frames = list(recent_frames)
+            # Anexa o frame anotado no final do clip
+            clip_frames.append(annotated)
+            clip_url = self.evidence.save_clip(
+                camera_id,
+                clip_frames,
+                suffix=f"{event.alert_type.lower()}_clip",
+                fps=EVIDENCE_CLIP_FPS,
+            )
+
         payload = {
             "cameraIdentifier": camera_identifier,
             "alertType": event.alert_type,
@@ -149,6 +168,7 @@ class EventEngine:
             "confidence": round(event.confidence, 2),
             "simulated": False,
             "evidenceUrl": evidence_url,
+            "evidenceClipUrl": clip_url,
         }
         try:
             response = requests.post(
@@ -160,11 +180,12 @@ class EventEngine:
             response.raise_for_status()
             public_id = response.json().get("publicId")
             logger.info(
-                "Alerta ingerido camera_id=%s publicId=%s type=%s conf=%.2f",
+                "Alerta ingerido camera_id=%s publicId=%s type=%s conf=%.2f clip=%s",
                 camera_id,
                 public_id,
                 event.alert_type,
                 event.confidence,
+                bool(clip_url),
             )
             return public_id
         except requests.RequestException as exc:

@@ -17,6 +17,7 @@ public record IngestDetectionRequest(
         @NotBlank @Size(max = 500) String description,
         Double confidence,
         boolean simulated,
-        @Size(max = 1000) String evidenceUrl
+        @Size(max = 1000) String evidenceUrl,
+        @Size(max = 1000) String evidenceClipUrl
 ) {
 }

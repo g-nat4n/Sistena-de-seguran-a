@@ -14,6 +14,15 @@ type DesktopApi = {
   saveConfig: (c: Partial<Cfg>) => Promise<Cfg>
   openDataDir: () => Promise<void>
   resetLocalData: () => Promise<{ ok: boolean }>
+  checkForUpdates?: () => Promise<{ ok: boolean; error?: string }>
+  installUpdate?: () => Promise<{ ok: boolean }>
+  getUpdateStatus?: () => Promise<{
+    checking?: boolean
+    available?: boolean
+    downloaded?: boolean
+    version?: string | null
+    message?: string | null
+  }>
 }
 
 export function DesktopSetupPage() {
@@ -89,6 +98,33 @@ export function DesktopSetupPage() {
         />
         Manter API rodando ao fechar a janela (não recomendado se troca de instalação no mesmo PC)
       </label>
+
+      <div className="rounded-xl border border-sg-border bg-sg-card/70 p-4">
+        <p className="text-sm font-medium text-sg-text">Atualizações</p>
+        <p className="mt-1 text-xs text-sg-muted">
+          O app verifica novas versões no GitHub Releases. Quando baixar, reinicie para aplicar.
+        </p>
+        <button
+          type="button"
+          className="mt-3 rounded-lg border border-sg-border px-4 py-2 text-sm text-sg-text hover:border-sg-blue/50"
+          onClick={async () => {
+            setSaved('Verificando atualização…')
+            try {
+              const result = await desktop.checkForUpdates?.()
+              if (result && 'error' in result && result.error) {
+                setSaved(String(result.error))
+              } else {
+                const st = await desktop.getUpdateStatus?.()
+                setSaved(st?.message || 'Verificação concluída.')
+              }
+            } catch (err) {
+              setSaved(err instanceof Error ? err.message : 'Falha ao verificar')
+            }
+          }}
+        >
+          Verificar atualização agora
+        </button>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <button
