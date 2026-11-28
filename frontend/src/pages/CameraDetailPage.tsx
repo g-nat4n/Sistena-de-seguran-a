@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DeviceCameraPanel } from '../components/cameras/DeviceCameraPanel'
 import { RtspConfigPanel } from '../components/cameras/RtspConfigPanel'
+import { RtspLivePreview } from '../components/cameras/RtspLivePreview'
 import { Badge } from '../components/ui/Badge'
 import { ErrorState } from '../components/ui/ErrorState'
 import { LoadingState } from '../components/ui/LoadingState'
@@ -72,18 +73,26 @@ export function CameraDetailPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
           <div className="overflow-hidden rounded-xl border border-sg-border bg-sg-card">
-            {camera.demoMediaUrl ? (
+            {camera.streamState === 'CONNECTED' || camera.rtspConfigured ? (
+              <RtspLivePreview
+                cameraId={camera.id}
+                cameraName={camera.name}
+                connected={camera.streamState === 'CONNECTED'}
+              />
+            ) : camera.demoMediaUrl ? (
               <img
                 src={camera.demoMediaUrl}
                 alt={`Demo ${camera.name}`}
                 className="aspect-video w-full object-cover"
               />
             ) : (
-              <div className="flex aspect-video items-center justify-center text-sg-muted">Sem mídia demo</div>
+              <div className="flex aspect-video items-center justify-center text-sg-muted">
+                Sem preview — conecte o RTSP acima
+              </div>
             )}
             <div className="border-t border-sg-border px-4 py-3 text-xs text-sg-muted">
-              Com o stream iniciado, o Vision analisa pose anônima (loitering / possível ocultação) e envia
-              alertas com evidência. Não declara furto sozinho · {formatDateTime(camera.updatedAt)}
+              Preview ao vivo do RTSP. O Vision analisa o mesmo stream e gera alertas com evidência ·{' '}
+              {formatDateTime(camera.updatedAt)}
             </div>
           </div>
 

@@ -46,10 +46,20 @@ class PersonDetector:
             self.backend = "yolo"
             logger.info("Detector de pessoas: YOLO (%s)", model_name)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("YOLO indisponível (%s). Usando fallback HOG OpenCV.", exc)
-            self._hog = cv2.HOGDescriptor()
-            self._hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-            self.backend = "hog"
+            logger.warning("YOLO indisponível (%s). Tentando fallback HOG OpenCV.", exc)
+            try:
+                if not hasattr(cv2, "HOGDescriptor"):
+                    raise RuntimeError("OpenCV sem HOGDescriptor (build headless incompleto)")
+                self._hog = cv2.HOGDescriptor()
+                self._hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+                self.backend = "hog"
+            except Exception as hog_exc:  # noqa: BLE001
+                logger.error(
+                    "Fallback HOG indisponível (%s). Stream continua sem detecção de pessoas.",
+                    hog_exc,
+                )
+                self._hog = None
+                self.backend = "none"
 
     def detect(self, frame: np.ndarray) -> list[PersonDetection]:
         if self.backend == "yolo" and self._yolo is not None:

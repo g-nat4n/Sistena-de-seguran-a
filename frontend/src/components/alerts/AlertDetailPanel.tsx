@@ -77,8 +77,20 @@ export function AlertDetailPanel({ alert, onUpdated, onClose, onDeleted }: Alert
                     src={ev.mediaUrl}
                     controls
                     playsInline
+                    preload="metadata"
                     className="aspect-video w-full rounded-lg bg-black object-contain"
+                    onError={(e) => {
+                      const el = e.currentTarget
+                      el.style.display = 'none'
+                      const fallback = el.nextElementSibling as HTMLElement | null
+                      if (fallback) fallback.classList.remove('hidden')
+                    }}
                   />
+                ) : null}
+                {isVideoEvidence(ev.mediaUrl) || ev.mediaType === 'video' ? (
+                  <p className="hidden rounded-lg border border-sg-amber/40 bg-sg-amber/10 px-3 py-2 text-xs text-sg-muted">
+                    Não foi possível reproduzir este vídeo neste PC. O arquivo existe — use a foto do alerta abaixo.
+                  </p>
                 ) : (
                   <img
                     src={ev.mediaUrl}

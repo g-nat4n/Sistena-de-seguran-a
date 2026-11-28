@@ -73,12 +73,12 @@ public class CameraRtspService {
         return cameraService.getById(cameraId);
     }
 
-    @Transactional
     public StreamActionResponse testConnection(Long cameraId) {
         Camera camera = requireConfigured(cameraId);
         if (!visionServiceClient.isReachable()) {
             camera.setStreamState(StreamState.ERROR);
             camera.setLastError("Serviço de visão (porta 8090) offline. Reabra o SmartGuard.");
+            cameraRepository.saveAndFlush(camera);
             return new StreamActionResponse(
                     cameraId,
                     StreamState.ERROR.name(),
@@ -88,6 +88,7 @@ public class CameraRtspService {
         }
         camera.setStreamState(StreamState.CONNECTING);
         camera.setLastTestedAt(Instant.now());
+        cameraRepository.saveAndFlush(camera);
 
         String rtspUrl = buildAuthenticatedRtspUrl(camera);
         var result = visionServiceClient.testRtsp(cameraId, camera.getIdentifier(), rtspUrl);
@@ -97,20 +98,22 @@ public class CameraRtspService {
             camera.setStreamState(StreamState.IDLE);
             camera.setLastError(null);
             camera.setStatus(CameraStatus.ONLINE);
+            cameraRepository.saveAndFlush(camera);
             return new StreamActionResponse(cameraId, camera.getStreamState().name(), true, result.message());
         }
 
         camera.setStreamState(StreamState.ERROR);
         camera.setLastError(truncate(result.message()));
+        cameraRepository.saveAndFlush(camera);
         return new StreamActionResponse(cameraId, camera.getStreamState().name(), false, result.message());
     }
 
-    @Transactional
     public StreamActionResponse startStream(Long cameraId) {
         Camera camera = requireConfigured(cameraId);
         if (!visionServiceClient.isReachable()) {
             camera.setStreamState(StreamState.ERROR);
             camera.setLastError("Serviço de visão (porta 8090) offline. Reabra o SmartGuard.");
+            cameraRepository.saveAndFlush(camera);
             return new StreamActionResponse(
                     cameraId,
                     StreamState.ERROR.name(),
@@ -120,6 +123,7 @@ public class CameraRtspService {
         }
         camera.setStreamState(StreamState.CONNECTING);
         camera.setLastError(null);
+        cameraRepository.saveAndFlush(camera);
 
         String rtspUrl = buildAuthenticatedRtspUrl(camera);
         var result = visionServiceClient.startStream(cameraId, camera.getIdentifier(), rtspUrl);
@@ -128,11 +132,13 @@ public class CameraRtspService {
             camera.setStreamState(StreamState.CONNECTED);
             camera.setLastSeenAt(Instant.now());
             camera.setStatus(CameraStatus.ONLINE);
+            cameraRepository.saveAndFlush(camera);
             return new StreamActionResponse(cameraId, camera.getStreamState().name(), true, result.message());
         }
 
         camera.setStreamState(StreamState.ERROR);
         camera.setLastError(truncate(result.message()));
+        cameraRepository.saveAndFlush(camera);
         return new StreamActionResponse(cameraId, camera.getStreamState().name(), false, result.message());
     }
 

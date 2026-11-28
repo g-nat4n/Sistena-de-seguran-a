@@ -27,7 +27,10 @@ public class VisionServiceClient {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.serviceToken = serviceToken;
         this.objectMapper = new ObjectMapper();
+        // HTTP/1.1 obrigatório: uvicorn/httptools rejeita upgrade HTTP/2 do Java HttpClient
+        // ("Invalid HTTP request" / "Unsupported upgrade request").
         this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
     }

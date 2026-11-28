@@ -8,6 +8,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict
 
+import cv2
+import numpy as np
 import requests
 
 from app.config import (
@@ -44,10 +46,33 @@ class StreamManager:
     def __init__(self) -> None:
         self._streams: Dict[int, StreamHandle] = {}
         self._lock = threading.Lock()
+        self._latest_jpeg: Dict[int, bytes] = {}
+        self._jpeg_lock = threading.Lock()
         self._detector = None
         self._detector_cls = None
         self._event_engine = None
         self._tracker_cls = None
+
+    def get_snapshot_jpeg(self, camera_id: int) -> bytes | None:
+        with self._jpeg_lock:
+            data = self._latest_jpeg.get(camera_id)
+            return data if data else None
+
+    def _store_preview_frame(self, camera_id: int, frame: np.ndarray) -> None:
+        try:
+            # Preview leve (~2–5 FPS efetivo no UI): JPEG baixo
+            h, w = frame.shape[:2]
+            max_w = 960
+            if w > max_w:
+                scale = max_w / float(w)
+                frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
+            ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 55])
+            if not ok:
+                return
+            with self._jpeg_lock:
+                self._latest_jpeg[camera_id] = encoded.tobytes()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Falha ao gerar preview camera_id=%s: %s", camera_id, exc)
 
     def _ensure_detection(self) -> None:
         if self._event_engine is not None:
@@ -141,6 +166,8 @@ class StreamManager:
         handle.stop_event.set()
         if handle.thread:
             handle.thread.join(timeout=5)
+        with self._jpeg_lock:
+            self._latest_jpeg.pop(camera_id, None)
         self._heartbeat(camera_id, "STOPPED", None)
         logger.info("Stream parado camera_id=%s", camera_id)
         return {"success": True, "message": "Stream interrompido"}
@@ -198,16 +225,28 @@ class StreamManager:
                         last_buffer_push = now
 
                     frame_index += 1
+                    # Preview a cada ~3 frames
+                    if frame_index % 3 == 0:
+                        self._store_preview_frame(camera_id, frame)
+
                     if DETECTION_ENABLED and tracker is not None and frame_index % DETECTION_EVERY_N_FRAMES == 0:
-                        detections = self._get_detector().detect(frame)
-                        tracks = tracker.update(detections)
-                        if tracks:
-                            self._event_engine.evaluate(
-                                camera_id=handle.camera_id,
-                                camera_identifier=handle.camera_identifier,
-                                frame=frame,
-                                tracks=tracks,
-                                recent_frames=clip_buffer.snapshot(),
+                        try:
+                            detections = self._get_detector().detect(frame)
+                            tracks = tracker.update(detections)
+                            if tracks:
+                                self._event_engine.evaluate(
+                                    camera_id=handle.camera_id,
+                                    camera_identifier=handle.camera_identifier,
+                                    frame=frame,
+                                    tracks=tracks,
+                                    recent_frames=clip_buffer.snapshot(),
+                                )
+                        except Exception as det_exc:  # noqa: BLE001
+                            # Não derruba o RTSP se a detecção falhar (YOLO/HOG ausente)
+                            logger.warning(
+                                "Detecção falhou camera_id=%s: %s",
+                                camera_id,
+                                det_exc,
                             )
 
                     time.sleep(0.01)

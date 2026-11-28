@@ -1,7 +1,8 @@
-"""Persistência local de snapshots e clips de evidência."""
+"""Persistência local de snapshots e clips de evidência (compatível com o app)."""
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -9,6 +10,8 @@ import cv2
 import numpy as np
 
 from app.config import EVIDENCE_DIR, PUBLIC_BASE_URL
+
+logger = logging.getLogger("smartguard.evidence")
 
 
 class EvidenceStore:
@@ -40,11 +43,70 @@ class EvidenceStore:
         if height < 2 or width < 2:
             return None
 
+        # Normaliza frames (BGR -> RGB) e tamanho
+        rgb_frames: list[np.ndarray] = []
+        for frame in frames:
+            if frame is None or frame.size == 0:
+                continue
+            if frame.shape[0] != height or frame.shape[1] != width:
+                frame = cv2.resize(frame, (width, height))
+            rgb_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+        if len(rgb_frames) < 3:
+            return None
+
+        # H.264 via ffmpeg (abre no Electron/Chrome). Fallback OpenCV mp4v.
+        if self._write_h264(path, rgb_frames, fps):
+            return f"{PUBLIC_BASE_URL.rstrip('/')}/evidence/{filename}"
+
+        if self._write_opencv_mp4v(path, frames, width, height, fps):
+            return f"{PUBLIC_BASE_URL.rstrip('/')}/evidence/{filename}"
+
+        logger.warning("Não foi possível gravar clip de evidência camera_id=%s", camera_id)
+        return None
+
+    def _write_h264(self, path: Path, rgb_frames: list[np.ndarray], fps: float) -> bool:
+        try:
+            import imageio.v2 as imageio
+
+            writer = imageio.get_writer(
+                str(path),
+                fps=max(1.0, fps),
+                codec="libx264",
+                quality=7,
+                pixelformat="yuv420p",
+                macro_block_size=1,
+            )
+            try:
+                for frame in rgb_frames:
+                    writer.append_data(frame)
+            finally:
+                writer.close()
+
+            if path.exists() and path.stat().st_size >= 1024:
+                return True
+            path.unlink(missing_ok=True)
+            return False
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Falha ao gravar H.264 (%s). Tentando fallback.", exc)
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            return False
+
+    def _write_opencv_mp4v(
+        self,
+        path: Path,
+        frames: list[np.ndarray],
+        width: int,
+        height: int,
+        fps: float,
+    ) -> bool:
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         writer = cv2.VideoWriter(str(path), fourcc, max(1.0, fps), (width, height))
         if not writer.isOpened():
-            return None
-
+            return False
         try:
             for frame in frames:
                 if frame is None or frame.size == 0:
@@ -60,6 +122,5 @@ class EvidenceStore:
                 path.unlink(missing_ok=True)
             except OSError:
                 pass
-            return None
-
-        return f"{PUBLIC_BASE_URL.rstrip('/')}/evidence/{filename}"
+            return False
+        return True

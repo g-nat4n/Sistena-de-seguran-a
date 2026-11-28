@@ -186,7 +186,8 @@ export function NotificationSettingsPanel() {
             Telegram
           </label>
           <p className="mt-1 text-[11px] text-sg-muted">
-            Abra o bot, pegue seu Chat ID (@userinfobot) e cadastre aqui — igual ao e-mail, só o destino.
+            Não use número de celular. Cada pessoa abre o bot, dá START, pega o Chat ID (@userinfobot)
+            e você cadastra aqui — pode adicionar vários destinatários.
           </p>
 
           <div className="mt-3 flex gap-2">

@@ -19,21 +19,21 @@ YOLO_MODEL = os.getenv("YOLO_MODEL", "yolov8n.pt")
 YOLO_POSE_MODEL = os.getenv("YOLO_POSE_MODEL", "yolov8n-pose.pt")
 # Confiança mais alta = menos falso positivo
 YOLO_CONFIDENCE = float(os.getenv("YOLO_CONFIDENCE", "0.55"))
-DWELL_SECONDS = float(os.getenv("DWELL_SECONDS", "35"))
-ALERT_COOLDOWN_SECONDS = float(os.getenv("ALERT_COOLDOWN_SECONDS", "60"))
+DWELL_SECONDS = float(os.getenv("DWELL_SECONDS", "18"))
+ALERT_COOLDOWN_SECONDS = float(os.getenv("ALERT_COOLDOWN_SECONDS", "25"))
 
-# Fase C — comportamento (defaults mais rígidos)
-LOITERING_SECONDS = float(os.getenv("LOITERING_SECONDS", "35"))
-LOITERING_MAX_DISPLACEMENT_PX = float(os.getenv("LOITERING_MAX_DISPLACEMENT_PX", "45"))
-LOITERING_RECENT_PATH_PX = float(os.getenv("LOITERING_RECENT_PATH_PX", "55"))
-MIN_TRACK_HITS = int(os.getenv("MIN_TRACK_HITS", "8"))
-CONCEALMENT_MIN_FRAMES = int(os.getenv("CONCEALMENT_MIN_FRAMES", "5"))
-CONCEALMENT_WRIST_TO_HIP_RATIO = float(os.getenv("CONCEALMENT_WRIST_TO_HIP_RATIO", "0.34"))
-CONCEALMENT_MIN_SCORE = float(os.getenv("CONCEALMENT_MIN_SCORE", "0.72"))
-CONCEALMENT_KEYPOINT_CONF = float(os.getenv("CONCEALMENT_KEYPOINT_CONF", "0.50"))
-# Presença simples gera muito ruído — desligada por padrão
-PERSON_ALERT_ENABLED = os.getenv("PERSON_ALERT_ENABLED", "false").lower() in {"1", "true", "yes"}
-MIN_ALERT_CONFIDENCE = float(os.getenv("MIN_ALERT_CONFIDENCE", "0.60"))
+# Fase C — comportamento (defaults mais sensíveis para loja/teste)
+LOITERING_SECONDS = float(os.getenv("LOITERING_SECONDS", "18"))
+LOITERING_MAX_DISPLACEMENT_PX = float(os.getenv("LOITERING_MAX_DISPLACEMENT_PX", "70"))
+LOITERING_RECENT_PATH_PX = float(os.getenv("LOITERING_RECENT_PATH_PX", "90"))
+MIN_TRACK_HITS = int(os.getenv("MIN_TRACK_HITS", "6"))
+CONCEALMENT_MIN_FRAMES = int(os.getenv("CONCEALMENT_MIN_FRAMES", "4"))
+CONCEALMENT_WRIST_TO_HIP_RATIO = float(os.getenv("CONCEALMENT_WRIST_TO_HIP_RATIO", "0.38"))
+CONCEALMENT_MIN_SCORE = float(os.getenv("CONCEALMENT_MIN_SCORE", "0.65"))
+CONCEALMENT_KEYPOINT_CONF = float(os.getenv("CONCEALMENT_KEYPOINT_CONF", "0.40"))
+# Presença estável ajuda a validar a detecção em campo
+PERSON_ALERT_ENABLED = os.getenv("PERSON_ALERT_ENABLED", "true").lower() in {"1", "true", "yes"}
+MIN_ALERT_CONFIDENCE = float(os.getenv("MIN_ALERT_CONFIDENCE", "0.50"))
 
 EVIDENCE_DIR = os.getenv(
     "EVIDENCE_DIR",
@@ -42,5 +42,5 @@ EVIDENCE_DIR = os.getenv(
 DETECTION_ENABLED = os.getenv("DETECTION_ENABLED", "true").lower() in {"1", "true", "yes"}
 
 # Clip de evidência (~últimos N segundos antes do alerta)
-EVIDENCE_CLIP_SECONDS = float(os.getenv("EVIDENCE_CLIP_SECONDS", "6"))
-EVIDENCE_CLIP_FPS = float(os.getenv("EVIDENCE_CLIP_FPS", "5"))
+EVIDENCE_CLIP_SECONDS = float(os.getenv("EVIDENCE_CLIP_SECONDS", "8"))
+EVIDENCE_CLIP_FPS = float(os.getenv("EVIDENCE_CLIP_FPS", "6"))
