@@ -33,9 +33,16 @@ function installInstanceId() {
   return createHash('sha1').update(installRoot()).digest('hex').slice(0, 12)
 }
 
+function smartGuardBaseDir() {
+  // Windows: ProgramData\SmartGuard; macOS/Linux: userData do Electron
+  if (process.platform === 'win32' && process.env.ProgramData) {
+    return path.join(process.env.ProgramData, 'SmartGuard')
+  }
+  return path.join(app.getPath('userData'), 'SmartGuard')
+}
+
 function instanceRoot() {
-  const base = process.env.ProgramData || app.getPath('userData')
-  return path.join(base, 'SmartGuard', 'instances', installInstanceId())
+  return path.join(smartGuardBaseDir(), 'instances', installInstanceId())
 }
 
 function dataDir() {
@@ -47,8 +54,7 @@ function logsDir() {
 }
 
 function legacyDataDir() {
-  const base = process.env.ProgramData || app.getPath('userData')
-  return path.join(base, 'SmartGuard', 'data')
+  return path.join(smartGuardBaseDir(), 'data')
 }
 
 function loadConfig() {

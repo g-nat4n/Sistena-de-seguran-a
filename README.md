@@ -4,18 +4,16 @@ Sistema web de monitoramento inteligente para lojas — MVP com simulador, câme
 
 > O sistema analisa **eventos e comportamentos**. Não há reconhecimento facial nem declaração automática de crime.
 
-## App Windows (recomendado para loja)
+## App desktop (recomendado para loja)
 
-**Cada PC é independente:** banco próprio + logins próprios (sem nuvem e sem compartilhar dados entre máquinas).
+**Cada instalação é independente:** banco próprio + logins próprios (sem nuvem).
 
-1. Precisa de **Java 21** no PC
-2. Abra `local\ABRIR-APP.bat` **ou** `desktop\dist\win-unpacked\SmartGuard AI.exe`
-3. Na 1ª abertura o app cria o banco em `%ProgramData%\SmartGuard\data\`
+- **Windows:** `SmartGuard-AI-Setup.exe` — [docs/INSTALACAO_WINDOWS.md](docs/INSTALACAO_WINDOWS.md)
+- **macOS Apple Silicon:** `SmartGuard-AI-Mac.dmg` — [docs/INSTALACAO_MAC.md](docs/INSTALACAO_MAC.md)
 
-Instalador: `desktop\dist\SmartGuard-Setup-1.0.0.exe` (gere com `npm run dist` em `desktop/`).  
-Guia: [`docs/INSTALACAO_WINDOWS.md`](docs/INSTALACAO_WINDOWS.md) · Backup: [`docs/BACKUP.md`](docs/BACKUP.md)
+Releases: https://github.com/g-nat4n/Sistena-de-seguran-a/releases
 
-Login demo: `admin@smartguard.local` / `admin123`
+Backup: [`docs/BACKUP.md`](docs/BACKUP.md)
 
 ### Alternativa Docker (dev)
 

@@ -148,35 +148,54 @@ function visionHealthCheck(timeoutMs = 2500) {
   })
 }
 
+function isWin() {
+  return process.platform === 'win32'
+}
+
+function javaBinName() {
+  return isWin() ? 'java.exe' : 'java'
+}
+
 function resolveJava() {
+  const javaName = javaBinName()
   const bundled = [
-    path.join(process.resourcesPath || '', 'runtime', 'jre', 'bin', 'java.exe'),
-    path.join(__dirname, '..', '..', 'windows', 'dist', 'runtime', 'jre', 'bin', 'java.exe'),
+    path.join(process.resourcesPath || '', 'runtime', 'jre', 'bin', javaName),
+    path.join(__dirname, '..', '..', 'windows', 'dist', 'runtime', 'jre', 'bin', javaName),
+    path.join(__dirname, '..', '..', 'macos', 'dist', 'runtime', 'jre', 'bin', javaName),
   ].find((p) => fs.existsSync(p))
   if (bundled) return bundled
 
-  const which = spawnSync('where', ['java'], { encoding: 'utf8', shell: true })
+  const finder = isWin() ? 'where' : 'which'
+  const which = spawnSync(finder, ['java'], { encoding: 'utf8', shell: isWin() })
   if (which.status === 0) {
     const first = which.stdout.split(/\r?\n/).map((s) => s.trim()).find(Boolean)
     if (first && fs.existsSync(first)) return first
   }
   const home = process.env.JAVA_HOME
   if (home) {
-    const candidate = path.join(home, 'bin', 'java.exe')
+    const candidate = path.join(home, 'bin', javaName)
     if (fs.existsSync(candidate)) return candidate
   }
-  const extras = [
-    'C:\\Program Files\\Eclipse Adoptium\\jdk-21\\bin\\java.exe',
-    'C:\\Program Files\\Java\\jdk-21\\bin\\java.exe',
-    'C:\\Program Files\\Microsoft\\jdk-21\\bin\\java.exe',
+  if (isWin()) {
+    const extras = [
+      'C:\\Program Files\\Eclipse Adoptium\\jdk-21\\bin\\java.exe',
+      'C:\\Program Files\\Java\\jdk-21\\bin\\java.exe',
+      'C:\\Program Files\\Microsoft\\jdk-21\\bin\\java.exe',
+    ]
+    return extras.find((p) => fs.existsSync(p)) || null
+  }
+  const macExtras = [
+    '/Library/Java/JavaVirtualMachines/temurin-21.jre/Contents/Home/bin/java',
+    '/opt/homebrew/opt/openjdk@21/bin/java',
   ]
-  return extras.find((p) => fs.existsSync(p)) || null
+  return macExtras.find((p) => fs.existsSync(p)) || null
 }
 
 function resolveApiJar() {
   const candidates = [
     path.join(process.resourcesPath || '', 'api', 'smartguard-api.jar'),
     path.join(__dirname, '..', '..', 'windows', 'dist', 'api', 'smartguard-api.jar'),
+    path.join(__dirname, '..', '..', 'macos', 'dist', 'api', 'smartguard-api.jar'),
     path.join(__dirname, '..', '..', 'backend', 'target', 'smartguard-api-0.0.1-SNAPSHOT.jar'),
   ]
   return candidates.find((p) => fs.existsSync(p)) || null
@@ -186,6 +205,7 @@ function resolveVisionRoot() {
   const candidates = [
     path.join(process.resourcesPath || '', 'vision'),
     path.join(__dirname, '..', '..', 'windows', 'dist', 'vision'),
+    path.join(__dirname, '..', '..', 'macos', 'dist', 'vision'),
     path.join(__dirname, '..', '..', 'ai'),
   ]
   return candidates.find((p) => fs.existsSync(path.join(p, 'app', 'main.py'))) || null
@@ -193,21 +213,32 @@ function resolveVisionRoot() {
 
 function resolveBundledPython(visionRoot) {
   if (!visionRoot) return null
-  const candidates = [
-    path.join(visionRoot, 'python', 'python.exe'),
-    path.join(visionRoot, 'python', 'Scripts', 'python.exe'),
-  ]
+  const candidates = isWin()
+    ? [
+        path.join(visionRoot, 'python', 'python.exe'),
+        path.join(visionRoot, 'python', 'Scripts', 'python.exe'),
+      ]
+    : [
+        path.join(visionRoot, 'python', 'bin', 'python3'),
+        path.join(visionRoot, 'python', 'bin', 'python'),
+        path.join(visionRoot, 'python', 'python'),
+      ]
   return candidates.find((p) => fs.existsSync(p)) || null
 }
 
 function resolveSystemPython() {
-  const tries = [
-    ['py', ['-3', '-c', 'import sys; print(sys.executable)']],
-    ['python', ['-c', 'import sys; print(sys.executable)']],
-    ['python3', ['-c', 'import sys; print(sys.executable)']],
-  ]
+  const tries = isWin()
+    ? [
+        ['py', ['-3', '-c', 'import sys; print(sys.executable)']],
+        ['python', ['-c', 'import sys; print(sys.executable)']],
+        ['python3', ['-c', 'import sys; print(sys.executable)']],
+      ]
+    : [
+        ['python3', ['-c', 'import sys; print(sys.executable)']],
+        ['python', ['-c', 'import sys; print(sys.executable)']],
+      ]
   for (const [cmd, args] of tries) {
-    const r = spawnSync(cmd, args, { encoding: 'utf8', shell: true })
+    const r = spawnSync(cmd, args, { encoding: 'utf8', shell: isWin() })
     if (r.status === 0) {
       const exe = (r.stdout || '').trim().split(/\r?\n/).filter(Boolean).pop()
       if (exe && fs.existsSync(exe)) return exe
@@ -270,14 +301,16 @@ async function ensureVision() {
     if (!systemPython) {
       sendSplash(
         'splash-status',
-        'Python do pacote ausente. Reinstale o SmartGuard-AI-Setup.exe completo.'
+        'Python do pacote ausente. Reinstale o SmartGuard AI completo.'
       )
       appendLog(logFile, 'Python não encontrado\n')
       return false
     }
 
-    const venvDir = path.join(process.env.ProgramData || dataDir(), 'SmartGuard', 'vision-venv')
-    visionPython = path.join(venvDir, 'Scripts', 'python.exe')
+    const venvDir = path.join(dataDir(), 'vision-venv')
+    visionPython = isWin()
+      ? path.join(venvDir, 'Scripts', 'python.exe')
+      : path.join(venvDir, 'bin', 'python')
     const marker = path.join(venvDir, '.deps-rtsp-ok')
     const reqFile = path.join(visionRoot, 'requirements-rtsp.txt')
 
@@ -360,17 +393,22 @@ async function ensureVision() {
 
 function stopStraySmartGuardProcesses() {
   // Evita reusar API/Vision de outra instalação ainda rodando na 8080/8090
-  spawnSync(
-    'powershell',
-    [
-      '-NoProfile',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-Command',
-      "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'smartguard-api\\.jar|uvicorn app\\.main' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
-    ],
-    { windowsHide: true, encoding: 'utf8' }
-  )
+  if (isWin()) {
+    spawnSync(
+      'powershell',
+      [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-Command',
+        "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'smartguard-api\\.jar|uvicorn app\\.main' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+      ],
+      { windowsHide: true, encoding: 'utf8' }
+    )
+    return
+  }
+  spawnSync('pkill', ['-f', 'smartguard-api.jar'], { encoding: 'utf8' })
+  spawnSync('pkill', ['-f', 'uvicorn app.main'], { encoding: 'utf8' })
 }
 
 function rmDirRecursive(target) {
@@ -397,7 +435,7 @@ async function ensureLocalStack() {
   if (!java) {
     sendSplash(
       'splash-error',
-      'Java embutido não encontrado no pacote. Baixe novamente o SmartGuard-AI-Setup.exe completo.'
+      'Java embutido não encontrado no pacote. Baixe novamente o instalador completo do SmartGuard AI.'
     )
     return false
   }
@@ -406,7 +444,7 @@ async function ensureLocalStack() {
   if (!jar) {
     sendSplash(
       'splash-error',
-      'API não encontrada no pacote. Rode windows\\scripts\\package-api.ps1 e gere o instalador de novo.'
+      'API não encontrada no pacote. Gere o instalador novamente (package-api).'
     )
     return false
   }
